@@ -32,17 +32,22 @@
 }
 
 .tippy-tooltip.highlights-theme {
-	padding: 5px 10px;
-	background-color: rgba(28,28,28,0.9);
-	border-radius: 2px;
-	font-weight: 500;
+	padding: 5px 10px !important;
+	background-color: rgba(28,28,28,0.9) !important;
+	border-radius: 2px !important;
+	font-weight: 500 !important;
 	font-size: 115%;
-	color: #EEE;
+	color: #EEE !important;
 	margin-bottom: 85px;
 }
 
 html[hide-scrollbar] .tippy-tooltip.highlights-theme {
 	margin-bottom: 125px;
+}
+
+.tippy-tooltip.highlights-theme.no-offset-theme {
+	font-size: 13px !important;
+	margin-bottom: 5px !important;
 }
 
 .tippy-tooltip.highlights-theme p {

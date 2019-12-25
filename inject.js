@@ -5,7 +5,7 @@
 		if (watch && watch.comments && watch.comments.contents) {
 			// console.log('Ready Comments');
 			window.postMessage({ comments: watch.comments.contents }, '*');
-		} else if (count < 80) {
+		} else if (count < 100) {
 			setTimeout(function () {
 				readyComments(++count);
 			}, 200);
@@ -23,7 +23,7 @@
 
 		if (watch && watch.comments && watch.comments.contents) {
 			readyComments(0);
-		} else if (count < 80) {
+		} else if (count < 100) {
 			setTimeout(function () {
 				getComments(++count);
 			}, 200);

@@ -7,6 +7,16 @@
 	var highlightsNextBtn = null;
 	var unpauseButton = null;
 	var highlightsList = [];
+	var currentTime = null;
+
+	// Init the tooltips
+	tippy.setDefaults({
+		animateFill: false,
+		delay: [400, 0],
+		duration: 0,
+		maxWidth: '250px',
+		theme: 'highlights'
+	})
 
 	// Levenshtein distance
 	function similarity(s1, s2) {
@@ -186,7 +196,16 @@
 	function renderHighlights(videoLength, timestamps, count) {
 		var progressBar = document.querySelector('#ytd-player .ytp-progress-bar-padding');
 
-		highlightsList = timestamps;
+		var hlist = [];
+		for (var timestamp in timestamps) {
+			if (timestamps.hasOwnProperty(timestamp)) {
+				timestamps[timestamp].stamp = timestamp;
+				hlist.push(timestamps[timestamp]);
+			}
+		}
+		hlist.sort((a, b) => Number(a.time) - Number(b.time));
+
+		highlightsList = hlist;
 
 		if (progressBar) {
 			var highlightsMarkup = '';
@@ -213,16 +232,11 @@
 
 			progressBar.appendChild(highlightsWrapper);
 
-			// Init the tooltips
-			tippy.setDefaults({
-				animateFill: false,
-				delay: [400, 0],
-				duration: 0,
-				maxWidth: '250px',
-				theme: 'highlights'
-			})
-
 			tippy(document.querySelectorAll('.ytph-highlight'));
+
+			if (hlist.length && highlightsNextBtn) {
+				highlightsNextBtn.style.display = 'inline-block';
+			}
 		} else if (count < maxRetryTimes) {
 			setTimeout(function () {
 				renderHighlights(videoLength, timestamps, ++count);
@@ -325,9 +339,8 @@
 			highlightsNextBtn = document.createElement('button');
 			highlightsNextBtn.innerHTML = '<svg enable-background="new 0 0 36 36" height="100%" id="Layer_1" version="1.1" viewBox="-16 -16 64 64" width="100%" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M24.291,14.276L14.705,4.69c-0.878-0.878-2.317-0.878-3.195,0l-0.8,0.8c-0.878,0.877-0.878,2.316,0,3.194  L18.024,16l-7.315,7.315c-0.878,0.878-0.878,2.317,0,3.194l0.8,0.8c0.878,0.879,2.317,0.879,3.195,0l9.586-9.587  c0.472-0.471,0.682-1.103,0.647-1.723C24.973,15.38,24.763,14.748,24.291,14.276z" fill="#ffffff"></path></svg>';
 			highlightsNextBtn.setAttribute('class', 'ytp-highlights-button ytp-button');
-			highlightsNextBtn.setAttribute('title', 'Next Highlight');
 
-			if (localStorage.getItem('ytph-highlights') === 'false') {
+			if (localStorage.getItem('ytph-highlights') === 'false' || !highlightsList.length) {
 				highlightsNextBtn.style.display = 'none';
 			}
 
@@ -336,6 +349,17 @@
 			}, false);
 
 			popup.appendChild(highlightsNextBtn);
+
+			tippy(highlightsNextBtn, {
+				theme: 'highlights no-offset',
+				onShow: function (instance) {
+					var highlight = getNextHighlight();
+
+					if (highlight && instance) {
+						instance.setContent(highlight.stamp + ' ' + highlight.highlights.join('<br>'));
+					}
+				}
+			});
 		} else if (count < maxRetryTimes) {
 			setTimeout(function () {
 				setToggle(++count);
@@ -343,8 +367,41 @@
 		}
 	}
 
+	function getNextHighlight() {
+		var highlight = false;
+
+		if (!currentTime) {
+			currentTime = document.querySelector('#ytd-player .ytp-time-current');
+		}
+
+		if (highlightsList.length && currentTime) {
+			var seconds = convertTimestamp(currentTime.innerHTML);
+			var highlight = highlightsList[0];
+
+			for (var i = 0; i < highlightsList.length; i++) {
+				if (seconds <= highlightsList[i].time) {
+					highlight = highlightsList[i];
+					break;
+				}
+			}
+		}
+
+		return highlight;
+	}
+
 	function nextHighlight() {
-		console.log(highlightsList);
+		var highlight = getNextHighlight();
+
+		if (highlight) {
+			var links = document.querySelectorAll('a.yt-simple-endpoint.yt-formatted-string');
+
+			for (var i2 = 0; i2 < links.length; i2++) {
+				if (highlight.stamp === links[i2].innerText) {
+					links[i2].click();
+					break;
+				}
+			}
+		}
 	}
 
 	window.onload = function () {
@@ -374,8 +431,6 @@
 		setNext(0);
 
 		listenPlayerChange(0);
-
-		listenPause();
 	}
 
 	// Inject JS directly into the page in order to load the video comments and pass back the data for rendering
