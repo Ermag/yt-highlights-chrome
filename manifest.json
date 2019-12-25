@@ -1,7 +1,7 @@
 {
 	"manifest_version": 2,
 	"name": "Highlights for YouTube™",
-	"version": "1.2",
+	"version": "1.4",
 	"description": "View highlights on the video player, that are generated from timestamps found in the description and top comments.",
 	"icons": {
 		"16": "img/icon-16.png",
@@ -10,9 +10,16 @@
 	},
 	"content_scripts": [
 		{
-			"matches": ["https://www.youtube.com/*"],
-			"js": ["tippy.all.min.js", "content.js"],
-			"css": ["content.css"],
+			"matches": [
+				"https://www.youtube.com/*"
+			],
+			"js": [
+				"tippy.all.min.js",
+				"content.js"
+			],
+			"css": [
+				"content.css"
+			],
 			"run_at": "document_end"
 		}
 	],

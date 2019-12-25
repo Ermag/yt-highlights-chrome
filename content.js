@@ -1,10 +1,12 @@
-(function() {
+(function () {
 	var MutationObserver = window.MutationObserver || window.WebKitMutationObserver || window.MozMutationObserver;
-	var maxRetryTimes = 80;
+	var maxRetryTimes = 100;
 	var retryDelay = 200; // ms
 	var video = null;
 	var highlightsWrapper = null;
+	var highlightsNextBtn = null;
 	var unpauseButton = null;
+	var highlightsList = [];
 
 	// Levenshtein distance
 	function similarity(s1, s2) {
@@ -138,7 +140,7 @@
 				var txt = comments[c].commentThreadRenderer.comment.commentRenderer.contentText;
 
 				if (txt.runs) {
-					var commentsBlob = txt.runs.map(function(e) { return e.text; }).join('');
+					var commentsBlob = txt.runs.map(function (e) { return e.text; }).join('');
 					commentsBlob = commentsBlob.split('\n');
 
 					for (var r = 0; r < commentsBlob.length; r++) {
@@ -163,7 +165,7 @@
 
 			resolve(timestamps);
 		} else if (count < maxRetryTimes) {
-			setTimeout(function() {
+			setTimeout(function () {
 				generateHighlights(resolve, ++count);
 			}, retryDelay);
 		}
@@ -175,7 +177,7 @@
 		if (element) {
 			resolve(convertTimestamp(element.textContent));
 		} else if (count < maxRetryTimes) {
-			setTimeout(function() {
+			setTimeout(function () {
 				getVideoLength(resolve, ++count);
 			}, retryDelay);
 		}
@@ -183,6 +185,8 @@
 
 	function renderHighlights(videoLength, timestamps, count) {
 		var progressBar = document.querySelector('#ytd-player .ytp-progress-bar-padding');
+
+		highlightsList = timestamps;
 
 		if (progressBar) {
 			var highlightsMarkup = '';
@@ -220,7 +224,7 @@
 
 			tippy(document.querySelectorAll('.ytph-highlight'));
 		} else if (count < maxRetryTimes) {
-			setTimeout(function() {
+			setTimeout(function () {
 				renderHighlights(videoLength, timestamps, ++count);
 			}, retryDelay);
 		}
@@ -230,8 +234,8 @@
 		var player = document.querySelector('ytd-watch-flexy');
 
 		if (player) {
-			var observer = new MutationObserver(function(mutations) {
-				mutations.forEach(function(mutation) {
+			var observer = new MutationObserver(function (mutations) {
+				mutations.forEach(function (mutation) {
 					if (mutation.type === 'attributes') {
 						getComments();
 					}
@@ -241,10 +245,10 @@
 			observer.observe(player, {
 				attributes: true
 			});
-		} else if (count < 80) {
-			setTimeout(function() {
+		} else if (count < maxRetryTimes) {
+			setTimeout(function () {
 				listenPlayerChange(++count);
-			}, 200);
+			}, retryDelay);
 		}
 	}
 
@@ -268,7 +272,7 @@
 
 		if (popup) {
 			var menu = document.createElement('div');
-			menu.innerHTML = '<div class="ytp-menuitem-label">Highlights</div><div class="ytp-menuitem-content"><div class="ytp-menuitem-toggle-checkbox"></div></div>';
+			menu.innerHTML = '<div class="ytp-menuitem-icon"></div><div class="ytp-menuitem-label">Highlights</div><div class="ytp-menuitem-content"><div class="ytp-menuitem-toggle-checkbox"></div></div>';
 			menu.setAttribute('class', 'ytp-menuitem');
 			menu.setAttribute('role', 'menuitemcheckbox');
 			menu.setAttribute('tabindex', '0');
@@ -277,15 +281,15 @@
 				menu.setAttribute('aria-checked', 'true');
 			}
 
-			menu.addEventListener('click', function(e) {
+			menu.addEventListener('click', function (e) {
 				toggleHighlights(this);
 			}, false);
 
 			popup.insertBefore(menu, popup.firstChild);
-		} else if (count < 80) {
-			setTimeout(function() {
+		} else if (count < maxRetryTimes) {
+			setTimeout(function () {
 				setToggle(++count);
-			}, 200);
+			}, retryDelay);
 		}
 	}
 
@@ -297,13 +301,15 @@
 
 		if (value === 'true') {
 			highlightsWrapper.style.display = 'block';
+			highlightsNextBtn.style.display = 'inline-block';
 		} else {
 			highlightsWrapper.style.display = 'none';
+			highlightsNextBtn.style.display = 'none';
 		}
 	}
 
 	function listenPause() {
-		setInterval(function() {
+		setInterval(function () {
 			unpauseButton = document.getElementById('confirm-button');
 
 			if (unpauseButton && unpauseButton.offsetParent) {
@@ -312,21 +318,50 @@
 		}, 1000);
 	}
 
-	window.onload = function() {
+	function setNext(count) {
+		var popup = document.querySelector('#ytd-player .ytp-left-controls');
+
+		if (popup) {
+			highlightsNextBtn = document.createElement('button');
+			highlightsNextBtn.innerHTML = '<svg enable-background="new 0 0 36 36" height="100%" id="Layer_1" version="1.1" viewBox="-16 -16 64 64" width="100%" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M24.291,14.276L14.705,4.69c-0.878-0.878-2.317-0.878-3.195,0l-0.8,0.8c-0.878,0.877-0.878,2.316,0,3.194  L18.024,16l-7.315,7.315c-0.878,0.878-0.878,2.317,0,3.194l0.8,0.8c0.878,0.879,2.317,0.879,3.195,0l9.586-9.587  c0.472-0.471,0.682-1.103,0.647-1.723C24.973,15.38,24.763,14.748,24.291,14.276z" fill="#ffffff"></path></svg>';
+			highlightsNextBtn.setAttribute('class', 'ytp-highlights-button ytp-button');
+			highlightsNextBtn.setAttribute('title', 'Next Highlight');
+
+			if (localStorage.getItem('ytph-highlights') === 'false') {
+				highlightsNextBtn.style.display = 'none';
+			}
+
+			highlightsNextBtn.addEventListener('click', function (e) {
+				nextHighlight();
+			}, false);
+
+			popup.appendChild(highlightsNextBtn);
+		} else if (count < maxRetryTimes) {
+			setTimeout(function () {
+				setToggle(++count);
+			}, retryDelay);
+		}
+	}
+
+	function nextHighlight() {
+		console.log(highlightsList);
+	}
+
+	window.onload = function () {
 		// console.log('Loaded Content');
 
-		window.addEventListener('message', function(event) {
+		window.addEventListener('message', function (event) {
 			if (event.data && event.data.comments) {
-				var timestampsPromise = new Promise(function(resolve) {
+				var timestampsPromise = new Promise(function (resolve) {
 					generateHighlights(resolve, 0, event.data.comments);
 				});
 
-				var videoLengthPromise = new Promise(function(resolve) {
+				var videoLengthPromise = new Promise(function (resolve) {
 					getVideoLength(resolve, 0);
 				});
 
 				// When highlights are generated and video length extracted render it all
-				Promise.all([videoLengthPromise, timestampsPromise]).then(function(values) {
+				Promise.all([videoLengthPromise, timestampsPromise]).then(function (values) {
 					renderHighlights(values[0], values[1]);
 				});
 			}
@@ -336,6 +371,8 @@
 
 		setToggle(0);
 
+		setNext(0);
+
 		listenPlayerChange(0);
 
 		listenPause();
@@ -344,7 +381,7 @@
 	// Inject JS directly into the page in order to load the video comments and pass back the data for rendering
 	var inject = document.createElement('script');
 	inject.src = chrome.extension.getURL('inject.js');
-	inject.onload = function() {
+	inject.onload = function () {
 		this.remove();
 	};
 

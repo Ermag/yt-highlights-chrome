@@ -1,18 +1,18 @@
-(function() {
-	readyComments = function(count) {
+(function () {
+	readyComments = function (count) {
 		var watch = document.querySelector('ytd-watch-flexy');
 
 		if (watch && watch.comments && watch.comments.contents) {
 			// console.log('Ready Comments');
 			window.postMessage({ comments: watch.comments.contents }, '*');
 		} else if (count < 80) {
-			setTimeout(function() {
+			setTimeout(function () {
 				readyComments(++count);
 			}, 200);
 		}
 	}
 
-	getComments = function(count) {
+	getComments = function (count) {
 		// console.log('Get comments');
 		var comments = document.querySelector('ytd-comments');
 		var watch = document.querySelector('ytd-watch-flexy');
@@ -24,16 +24,16 @@
 		if (watch && watch.comments && watch.comments.contents) {
 			readyComments(0);
 		} else if (count < 80) {
-			setTimeout(function() {
+			setTimeout(function () {
 				getComments(++count);
 			}, 200);
 		}
 	}
 
-	window.onload = function() {
+	window.onload = function () {
 		// console.log('Loaded Inject');
 
-		window.addEventListener('message', function(event) {
+		window.addEventListener('message', function (event) {
 			if (event.data && event.data.requestComments) {
 				getComments(0);
 			}
