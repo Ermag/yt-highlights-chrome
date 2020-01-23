@@ -287,7 +287,7 @@
 		if (popup) {
 			var menu = document.createElement('div');
 			menu.innerHTML = '<div class="ytp-menuitem-icon"></div><div class="ytp-menuitem-label">Highlights</div><div class="ytp-menuitem-content"><div class="ytp-menuitem-toggle-checkbox"></div></div>';
-			menu.setAttribute('class', 'ytp-menuitem');
+			menu.setAttribute('class', 'ytp-menuitem ytp-highlights-setting');
 			menu.setAttribute('role', 'menuitemcheckbox');
 			menu.setAttribute('tabindex', '0');
 
@@ -362,7 +362,7 @@
 			});
 		} else if (count < maxRetryTimes) {
 			setTimeout(function () {
-				setToggle(++count);
+				setNext(++count);
 			}, retryDelay);
 		}
 	}
@@ -379,7 +379,7 @@
 			var highlight = highlightsList[0];
 
 			for (var i = 0; i < highlightsList.length; i++) {
-				if (seconds <= highlightsList[i].time) {
+				if (seconds < highlightsList[i].time) {
 					highlight = highlightsList[i];
 					break;
 				}
@@ -408,6 +408,10 @@
 		// console.log('Loaded Content');
 
 		window.addEventListener('message', function (event) {
+			if (highlightsNextBtn) {
+				highlightsNextBtn.style.display = 'none';
+			}
+
 			if (event.data && event.data.comments) {
 				var timestampsPromise = new Promise(function (resolve) {
 					generateHighlights(resolve, 0, event.data.comments);

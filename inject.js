@@ -22,7 +22,13 @@
 		}
 
 		if (watch && watch.comments && watch.comments.contents) {
-			readyComments(0);
+			if (watch.comments.trackingParams) {
+				readyComments(0);
+			} else {
+				setTimeout(function () {
+					getComments(0);
+				}, 200);
+			}
 		} else if (count < 100) {
 			setTimeout(function () {
 				getComments(++count);
