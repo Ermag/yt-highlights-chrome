@@ -203,7 +203,9 @@
 				hlist.push(timestamps[timestamp]);
 			}
 		}
-		hlist.sort((a, b) => Number(a.time) - Number(b.time));
+		hlist.sort(function(a, b) { 
+			return Number(a.time) - Number(b.time);
+		});
 
 		highlightsList = hlist;
 
