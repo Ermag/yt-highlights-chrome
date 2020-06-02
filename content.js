@@ -4,7 +4,8 @@
 	var retryDelay = 200; // ms
 	var video = null;
 	var highlightsWrapper = null;
-	var highlightsNextBtn = null;
+	var controlsWrapper = null;
+	var currentHighlight = null;
 	var unpauseButton = null;
 	var highlightsList = [];
 	var currentTime = null;
@@ -17,6 +18,19 @@
 		maxWidth: '250px',
 		theme: 'highlights'
 	})
+
+	function truncate(fullStr, strLen, separator) {
+		if (fullStr.length <= strLen) return fullStr;
+		
+		separator = separator || '...';
+		
+		var sepLen = separator.length,
+			charsToShow = strLen - sepLen,
+			frontChars = Math.ceil(charsToShow/2),
+			backChars = Math.floor(charsToShow/2);
+		
+		return fullStr.substr(0, frontChars) + separator + fullStr.substr(fullStr.length - backChars);
+	};
 
 	// Levenshtein distance
 	function similarity(s1, s2) {
@@ -194,7 +208,7 @@
 	}
 
 	function renderHighlights(videoLength, timestamps, count) {
-		var progressBar = document.querySelector('#ytd-player .ytp-progress-bar-padding');
+		var progressBar = document.querySelector('#ytd-player .ytp-progress-bar');
 
 		var hlist = [];
 		for (var timestamp in timestamps) {
@@ -222,8 +236,9 @@
 			for (var timestamp in timestamps) {
 				if (timestamps.hasOwnProperty(timestamp)) {
 					var highlights = timestamps[timestamp].highlights;
+					var fontSize = highlights.join(' ').length > 70 ? 12 : 13;
 					var position = Math.max(0, ((timestamps[timestamp].time / videoLength) * 100) - 0.5); // Substract half ot the elem width and make sure its not bellow 0
-					var tooltip = '<p>' + highlights.join('</p><p>').replace(/"/g, '&quot;') + '</p>';
+					var tooltip = '<div style=\'font-size: ' + fontSize +'px;\'><p>' + highlights.join('</p><p>').replace(/"/g, '&quot;') + '</p></div>';
 
 					// TODO: Dont render more than X chars
 					highlightsMarkup += '<div class="ytph-highlight" style="left: ' + position.toFixed(2) + '%;" data-tippy-content="' + tooltip + '"></div>';
@@ -236,8 +251,8 @@
 
 			tippy(document.querySelectorAll('.ytph-highlight'));
 
-			if (hlist.length && highlightsNextBtn) {
-				highlightsNextBtn.style.display = 'inline-block';
+			if (hlist.length && controlsWrapper) {
+				controlsWrapper.style.display = 'inline-block';
 			}
 		} else if (count < maxRetryTimes) {
 			setTimeout(function () {
@@ -317,40 +332,57 @@
 
 		if (value === 'true') {
 			highlightsWrapper.style.display = 'block';
-			highlightsNextBtn.style.display = 'inline-block';
+			controlsWrapper.style.display = 'inline-block';
 		} else {
 			highlightsWrapper.style.display = 'none';
-			highlightsNextBtn.style.display = 'none';
+			controlsWrapper.style.display = 'none';
 		}
 	}
 
-	function listenPause() {
+	function listenCurrent() {
 		setInterval(function () {
-			unpauseButton = document.getElementById('confirm-button');
-
-			if (unpauseButton && unpauseButton.offsetParent) {
-				unpauseButton.click();
+			var highlight = getNextHighlight(true);
+			var player = document.getElementById('ytd-player');
+			
+			if (currentHighlight && highlight && player) {
+				currentHighlight.style.display = player.offsetWidth <= 700 ? 'none' : 'initial';
+				currentHighlight.innerHTML = truncate(highlight.highlights.join(' '), 40);
 			}
 		}, 1000);
 	}
 
-	function setNext(count) {
+	function setControls(count) {
 		var popup = document.querySelector('#ytd-player .ytp-left-controls');
 
 		if (popup) {
-			highlightsNextBtn = document.createElement('button');
-			highlightsNextBtn.innerHTML = '<svg enable-background="new 0 0 36 36" height="100%" id="Layer_1" version="1.1" viewBox="-16 -16 64 64" width="100%" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M24.291,14.276L14.705,4.69c-0.878-0.878-2.317-0.878-3.195,0l-0.8,0.8c-0.878,0.877-0.878,2.316,0,3.194  L18.024,16l-7.315,7.315c-0.878,0.878-0.878,2.317,0,3.194l0.8,0.8c0.878,0.879,2.317,0.879,3.195,0l9.586-9.587  c0.472-0.471,0.682-1.103,0.647-1.723C24.973,15.38,24.763,14.748,24.291,14.276z" fill="#ffffff"></path></svg>';
+			controlsWrapper = document.createElement('div');
+			controlsWrapper.setAttribute('class', 'ytd-highlights-controls');
+			currentHighlight = document.createElement('span');
+			currentHighlight.setAttribute('id', 'ytd-highlights-text');
+			var highlightsNextBtn = document.createElement('button');
+			var highlightsPrevBtn = document.createElement('button');
+			var svg = '<svg enable-background="new 0 0 36 36" height="100%" id="Layer_1" version="1.1" viewBox="-16 -16 64 64" width="100%" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M24.291,14.276L14.705,4.69c-0.878-0.878-2.317-0.878-3.195,0l-0.8,0.8c-0.878,0.877-0.878,2.316,0,3.194  L18.024,16l-7.315,7.315c-0.878,0.878-0.878,2.317,0,3.194l0.8,0.8c0.878,0.879,2.317,0.879,3.195,0l9.586-9.587  c0.472-0.471,0.682-1.103,0.647-1.723C24.973,15.38,24.763,14.748,24.291,14.276z" fill="#ffffff"></path></svg>';
+			highlightsNextBtn.innerHTML = svg;
+			highlightsPrevBtn.innerHTML = svg;
 			highlightsNextBtn.setAttribute('class', 'ytp-highlights-button ytp-button');
+			highlightsPrevBtn.setAttribute('class', 'ytp-highlights-button ytp-button ytp-prev');
+			controlsWrapper.appendChild(highlightsPrevBtn);
+			controlsWrapper.appendChild(currentHighlight);
+			controlsWrapper.appendChild(highlightsNextBtn);
 
 			if (localStorage.getItem('ytph-highlights') === 'false' || !highlightsList.length) {
-				highlightsNextBtn.style.display = 'none';
+				controlsWrapper.style.display = 'none';
 			}
 
 			highlightsNextBtn.addEventListener('click', function (e) {
 				nextHighlight();
 			}, false);
 
-			popup.appendChild(highlightsNextBtn);
+			highlightsPrevBtn.addEventListener('click', function (e) {
+				nextHighlight(true);
+			}, false);
+
+			popup.parentNode.insertBefore(controlsWrapper, popup.nextSibling);
 
 			tippy(highlightsNextBtn, {
 				theme: 'highlights no-offset',
@@ -358,18 +390,29 @@
 					var highlight = getNextHighlight();
 
 					if (highlight && instance) {
-						instance.setContent(highlight.stamp + ' ' + highlight.highlights.join('<br>'));
+						instance.setContent(highlight.highlights.join('<br>'));
 					}
 				}
 			});
+			tippy(highlightsPrevBtn, {
+				theme: 'highlights no-offset',
+				onShow: function (instance) {
+					var highlight = getNextHighlight(true);
+
+					if (highlight && instance) {
+						instance.setContent(highlight.highlights.join('<br>'));
+					}
+				}
+			});
+			listenCurrent();
 		} else if (count < maxRetryTimes) {
 			setTimeout(function () {
-				setNext(++count);
+				setControls(++count);
 			}, retryDelay);
 		}
 	}
 
-	function getNextHighlight() {
+	function getNextHighlight(prev) {
 		var highlight = false;
 
 		if (!currentTime) {
@@ -379,11 +422,20 @@
 		if (highlightsList.length && currentTime) {
 			var seconds = convertTimestamp(currentTime.innerHTML);
 			var highlight = highlightsList[0];
-
-			for (var i = 0; i < highlightsList.length; i++) {
-				if (seconds < highlightsList[i].time) {
-					highlight = highlightsList[i];
-					break;
+			
+			if (prev) {
+				for (var i = highlightsList.length - 1; i >= 0; i--) {
+					if (seconds > highlightsList[i].time) {
+						highlight = highlightsList[i];
+						break;
+					}
+				}
+			} else {
+				for (var i = 0; i < highlightsList.length; i++) {
+					if (seconds < highlightsList[i].time) {
+						highlight = highlightsList[i];
+						break;
+					}
 				}
 			}
 		}
@@ -391,8 +443,8 @@
 		return highlight;
 	}
 
-	function nextHighlight() {
-		var highlight = getNextHighlight();
+	function nextHighlight(prev) {
+		var highlight = getNextHighlight(prev);
 
 		if (highlight) {
 			var links = document.querySelectorAll('a.yt-simple-endpoint.yt-formatted-string');
@@ -410,8 +462,8 @@
 		// console.log('Loaded Content');
 
 		window.addEventListener('message', function (event) {
-			if (highlightsNextBtn) {
-				highlightsNextBtn.style.display = 'none';
+			if (controlsWrapper) {
+				controlsWrapper.style.display = 'none';
 			}
 
 			if (event.data && event.data.comments) {
@@ -434,7 +486,7 @@
 
 		setToggle(0);
 
-		setNext(0);
+		setControls(0);
 
 		listenPlayerChange(0);
 	}
