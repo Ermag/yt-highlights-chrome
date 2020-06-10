@@ -6,8 +6,8 @@
 	var highlightsWrapper = null;
 	var controlsWrapper = null;
 	var currentHighlight = null;
-	var unpauseButton = null;
 	var highlightsList = [];
+	var player = null;
 	var currentTime = null;
 
 	// Init the tooltips
@@ -126,6 +126,19 @@
 
 		if (txt.length < 2) {
 			return;
+		}
+
+		var removeChars = ['-', '[', ']']
+		for (var i = 0; i < removeChars.length; i++) {
+			// Start of string
+			if (txt.charAt(0) === removeChars[i]) {
+				txt = txt.substr(1);
+			}
+
+			// End of string
+			if (txt.charAt(txt.length - 1) === removeChars[i]) {
+				txt = txt.substr(0, txt.length - 1);
+			}
 		}
 
 		// Check if there is already timestamp
@@ -302,6 +315,7 @@
 		var popup = document.querySelector('#ytd-player .ytp-popup .ytp-panel-menu');
 
 		if (popup) {
+			player = document.getElementById('ytd-player');
 			var menu = document.createElement('div');
 			menu.innerHTML = '<div class="ytp-menuitem-icon"></div><div class="ytp-menuitem-label">Highlights</div><div class="ytp-menuitem-content"><div class="ytp-menuitem-toggle-checkbox"></div></div>';
 			menu.setAttribute('class', 'ytp-menuitem ytp-highlights-setting');
@@ -342,11 +356,14 @@
 	function listenCurrent() {
 		setInterval(function () {
 			var highlight = getNextHighlight(true);
-			var player = document.getElementById('ytd-player');
 			
 			if (currentHighlight && highlight && player) {
-				currentHighlight.style.display = player.offsetWidth <= 700 ? 'none' : 'initial';
-				currentHighlight.innerHTML = truncate(highlight.highlights.join(' '), 40);
+				var cut = Math.floor((player.offsetWidth - 440) / 10)
+				currentHighlight.style.display = cut < 10 ? 'none' : 'initial';
+				
+				if (cut > 10 && currentHighlight.innerHTML !== truncate(highlight.highlights.join(' '), cut)) {
+					currentHighlight.innerHTML = truncate(highlight.highlights.join(' '), cut);
+				}
 			}
 		}, 1000);
 	}
