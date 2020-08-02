@@ -58,7 +58,10 @@ body.no-scroll .tippy-tooltip.highlights-theme {
 
 #ytd-player .ytp-chrome-controls {
 	display: flex;
-    justify-content: space-between;
+}
+
+#ytd-player .ytd-highlights-controls {
+	flex: 1;
 }
 
 #ytd-player .ytd-highlights-controls button {
@@ -77,6 +80,7 @@ body.no-scroll .tippy-tooltip.highlights-theme {
 	vertical-align: middle;
 	font-size: 13px;
 	text-shadow: 1px 1px #000;
+	color: #eada7f;
 }
 
 .ytp-fullerscreen-edu-chevron {

@@ -264,8 +264,9 @@
 
 			tippy(document.querySelectorAll('.ytph-highlight'));
 
-			if (hlist.length && controlsWrapper) {
+			if (hlist.length && controlsWrapper && localStorage.getItem('ytph-highlights') !== 'false') {
 				controlsWrapper.style.display = 'inline-block';
+				controlsWrapper.previousElementSibling.style.flex = 'none';
 			}
 		} else if (count < maxRetryTimes) {
 			setTimeout(function () {
@@ -302,8 +303,9 @@
 
 		if (v && video !== v) {
 			video = v;
+			highlightsList = [];
 
-			if (highlightsWrapper) {
+			if (highlightsWrapper && highlightsWrapper.parentNode) {
 				highlightsWrapper.parentNode.removeChild(highlightsWrapper);
 			}
 
@@ -346,10 +348,14 @@
 
 		if (value === 'true') {
 			highlightsWrapper.style.display = 'block';
-			controlsWrapper.style.display = 'inline-block';
+			if (highlightsList.length) {
+				controlsWrapper.style.display = 'inline-block';
+				controlsWrapper.previousElementSibling.style.flex = 'none';
+			}
 		} else {
 			highlightsWrapper.style.display = 'none';
 			controlsWrapper.style.display = 'none';
+			controlsWrapper.previousElementSibling.style.flex = '';
 		}
 	}
 
@@ -383,12 +389,16 @@
 			highlightsPrevBtn.innerHTML = svg;
 			highlightsNextBtn.setAttribute('class', 'ytp-highlights-button ytp-button');
 			highlightsPrevBtn.setAttribute('class', 'ytp-highlights-button ytp-button ytp-prev');
+			// Appends
 			controlsWrapper.appendChild(highlightsPrevBtn);
-			controlsWrapper.appendChild(currentHighlight);
 			controlsWrapper.appendChild(highlightsNextBtn);
+			controlsWrapper.appendChild(currentHighlight);
+
+			popup.parentNode.insertBefore(controlsWrapper, popup.nextSibling);
 
 			if (localStorage.getItem('ytph-highlights') === 'false' || !highlightsList.length) {
 				controlsWrapper.style.display = 'none';
+				controlsWrapper.previousElementSibling.style.flex = '';
 			}
 
 			highlightsNextBtn.addEventListener('click', function (e) {
@@ -399,15 +409,13 @@
 				nextHighlight(true);
 			}, false);
 
-			popup.parentNode.insertBefore(controlsWrapper, popup.nextSibling);
-
 			tippy(highlightsNextBtn, {
 				theme: 'highlights no-offset',
 				onShow: function (instance) {
 					var highlight = getNextHighlight();
 
 					if (highlight && instance) {
-						instance.setContent(highlight.highlights.join('<br>'));
+						instance.setContent(highlight.stamp + ' - ' + highlight.highlights.join('<br>'));
 					}
 				}
 			});
@@ -417,7 +425,7 @@
 					var highlight = getNextHighlight(true);
 
 					if (highlight && instance) {
-						instance.setContent(highlight.highlights.join('<br>'));
+						instance.setContent(highlight.stamp + ' - ' +  highlight.highlights.join('<br>'));
 					}
 				}
 			});
@@ -481,6 +489,7 @@
 		window.addEventListener('message', function (event) {
 			if (controlsWrapper) {
 				controlsWrapper.style.display = 'none';
+				controlsWrapper.previousElementSibling.style.flex = '';
 			}
 
 			if (event.data && event.data.comments) {
