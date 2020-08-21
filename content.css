@@ -56,14 +56,6 @@ body.no-scroll .tippy-tooltip.highlights-theme {
 	padding: 0;
 }
 
-#ytd-player .ytp-chrome-controls {
-	display: flex;
-}
-
-#ytd-player .ytd-highlights-controls {
-	flex: 1;
-}
-
 #ytd-player .ytd-highlights-controls button {
 	vertical-align: middle;
 }
