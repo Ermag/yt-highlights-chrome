@@ -15,6 +15,10 @@
 			comments.setAttribute('style', 'position: absolute; top: 0; z-index: -999;');
 			window.dispatchEvent(new Event('scroll'));
 			isLoadDispatched = true;
+			// Failsafe
+			setTimeout(function () {
+				comments.removeAttribute('style');
+			}, 5000);
 		}
 
 		if (comments && comments.$ && comments.$.sections && comments.$.sections.items_.length > 1) {
