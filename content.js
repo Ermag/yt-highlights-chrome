@@ -174,6 +174,7 @@
 
 			// Loop trough comments and add check for timestamps
 			for (var c = 0; c < comments.length; c++) {
+				if (!comments[c].commentThreadRenderer) { continue; }
 				var txt = comments[c].commentThreadRenderer.comment.commentRenderer.contentText;
 
 				if (txt.runs) {
@@ -514,7 +515,7 @@
 
 	// Inject JS directly into the page in order to load the video comments and pass back the data for rendering
 	var inject = document.createElement('script');
-	inject.src = chrome.extension.getURL('inject.js');
+	inject.src = chrome.runtime.getURL('inject.js');
 	inject.onload = function () {
 		this.remove();
 	};

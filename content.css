@@ -73,6 +73,7 @@ body.no-scroll .tippy-tooltip.highlights-theme {
 	font-size: 13px;
 	text-shadow: 1px 1px #000;
 	color: #eada7f;
+	user-select: text;
 }
 
 .ytp-fullerscreen-edu-chevron {

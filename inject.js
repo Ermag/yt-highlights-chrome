@@ -1,35 +1,26 @@
 (function () {
-	readyComments = function (count) {
-		var watch = document.querySelector('ytd-watch-flexy');
-
-		if (watch && watch.comments && watch.comments.contents) {
-			// console.log('Ready Comments');
-			window.postMessage({ comments: watch.comments.contents }, '*');
-		} else if (count < 100) {
-			setTimeout(function () {
-				readyComments(++count);
-			}, 200);
-		}
+	var isLoadDispatched = false;
+	var retryCount = 100;
+	
+	readyComments = function (data) {
+		// console.log('Ready Comments');
+		window.postMessage({ comments: data }, '*');
 	}
 
 	getComments = function (count) {
-		// console.log('Get comments');
-		var comments = document.querySelector('ytd-comments');
-		var watch = document.querySelector('ytd-watch-flexy');
+		// console.log('Get comments', count);
+		var comments = document.querySelector('ytd-comments#comments');
 
-		if (comments && comments.$ && typeof comments.loadComments === 'function' && watch && watch.comments && !watch.comments.contents) {
-			comments.loadComments();
+		if (!isLoadDispatched && comments && comments.$) {
+			comments.setAttribute('style', 'position: absolute; top: 0; z-index: -999;');
+			window.dispatchEvent(new Event('scroll'));
+			isLoadDispatched = true;
 		}
 
-		if (watch && watch.comments && watch.comments.contents) {
-			if (watch.comments.trackingParams) {
-				readyComments(0);
-			} else {
-				setTimeout(function () {
-					getComments(0);
-				}, 200);
-			}
-		} else if (count < 100) {
+		if (comments && comments.$ && comments.$.sections && comments.$.sections.items_.length > 1) {
+			comments.removeAttribute('style');
+			readyComments(comments.$.sections.items_);
+		} else if (count < retryCount) {
 			setTimeout(function () {
 				getComments(++count);
 			}, 200);
@@ -38,7 +29,6 @@
 
 	window.onload = function () {
 		// console.log('Loaded Inject');
-
 		window.addEventListener('message', function (event) {
 			if (event.data && event.data.requestComments) {
 				getComments(0);
