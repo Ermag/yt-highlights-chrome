@@ -1,9 +1,12 @@
 (function () {
 	var isLoadDispatched = false;
 	var retryCount = 100;
+	var failSafeTimeout = null;
 	
 	readyComments = function (data) {
 		// console.log('Ready Comments');
+		isLoadDispatched = false;
+		clearTimeout(failSafeTimeout);
 		window.postMessage({ comments: data }, '*');
 	}
 
@@ -16,7 +19,7 @@
 			window.dispatchEvent(new Event('scroll'));
 			isLoadDispatched = true;
 			// Failsafe
-			setTimeout(function () {
+			failSafeTimeout = setTimeout(function () {
 				comments.removeAttribute('style');
 			}, 5000);
 		}
