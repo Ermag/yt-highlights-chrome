@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Highlights for YouTube",
-	"version": "2.7",
+	"version": "2.8",
 	"description": "View highlights on the video player, that are generated from timestamps found in the description and top comments.",
 	"icons": {
 		"16": "img/icon-16.png",
@@ -25,8 +25,12 @@
 	],
 	"web_accessible_resources": [
 		{
-			"resources": ["inject.js"],
-			"matches": ["https://www.youtube.com/*"]
+			"resources": [
+				"inject.js"
+			],
+			"matches": [
+				"https://www.youtube.com/*"
+			]
 		}
 	]
 }

@@ -2,7 +2,7 @@
 	var isLoadDispatched = false;
 	var retryCount = 100;
 	var failSafeTimeout = null;
-	
+
 	readyComments = function (data) {
 		// console.log('Ready Comments');
 		isLoadDispatched = false;

@@ -21,14 +21,14 @@
 
 	function truncate(fullStr, strLen, separator) {
 		if (fullStr.length <= strLen) return fullStr;
-		
+
 		separator = separator || '...';
-		
+
 		var sepLen = separator.length,
 			charsToShow = strLen - sepLen,
-			frontChars = Math.ceil(charsToShow/2),
-			backChars = Math.floor(charsToShow/2);
-		
+			frontChars = Math.ceil(charsToShow / 2),
+			backChars = Math.floor(charsToShow / 2);
+
 		return fullStr.substr(0, frontChars) + separator + fullStr.substr(fullStr.length - backChars);
 	};
 
@@ -165,7 +165,7 @@
 	}
 
 	function generateHighlights(resolve, count, comments) {
-		var element = document.getElementById('description');
+		var element = document.querySelector('#content #description');
 
 		if (element && comments.length) {
 			var desc = element.textContent.split('\n');
@@ -231,7 +231,7 @@
 				hlist.push(timestamps[timestamp]);
 			}
 		}
-		hlist.sort(function(a, b) { 
+		hlist.sort(function (a, b) {
 			return Number(a.time) - Number(b.time);
 		});
 
@@ -252,7 +252,7 @@
 					var highlights = timestamps[timestamp].highlights;
 					var fontSize = highlights.join(' ').length > 70 ? 12 : 13;
 					var position = Math.max(0, ((timestamps[timestamp].time / videoLength) * 100) - 0.5); // Substract half ot the elem width and make sure its not bellow 0
-					var tooltip = '<div style=\'font-size: ' + fontSize +'px;\'><p>' + highlights.join('</p><p>').replace(/"/g, '&quot;') + '</p></div>';
+					var tooltip = '<div style=\'font-size: ' + fontSize + 'px;\'><p>' + highlights.join('</p><p>').replace(/"/g, '&quot;') + '</p></div>';
 
 					// TODO: Dont render more than X chars
 					highlightsMarkup += '<div class="ytph-highlight" style="left: ' + position.toFixed(2) + '%;" data-tippy-content="' + tooltip + '"></div>';
@@ -360,11 +360,11 @@
 	function listenCurrent() {
 		setInterval(function () {
 			var highlight = getNextHighlight(true);
-			
+
 			if (currentHighlight && highlight && player) {
 				var cut = Math.floor((player.offsetWidth - 440) / 10)
 				currentHighlight.style.display = cut < 10 ? 'none' : 'initial';
-				
+
 				if (cut > 10 && currentHighlight.innerHTML !== truncate(highlight.highlights.join(' '), cut)) {
 					currentHighlight.innerHTML = truncate(highlight.highlights.join(' '), cut);
 				}
@@ -422,7 +422,7 @@
 					var highlight = getNextHighlight(true);
 
 					if (highlight && instance) {
-						instance.setContent(highlight.stamp + ' - ' +  highlight.highlights.join('<br>'));
+						instance.setContent(highlight.stamp + ' - ' + highlight.highlights.join('<br>'));
 					}
 				}
 			});
@@ -444,7 +444,7 @@
 		if (highlightsList.length && currentTime) {
 			var seconds = convertTimestamp(currentTime.innerHTML);
 			var highlight = highlightsList[0];
-			
+
 			if (prev) {
 				for (var i = highlightsList.length - 1; i >= 0; i--) {
 					if (seconds > highlightsList[i].time) {
