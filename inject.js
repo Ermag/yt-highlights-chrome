@@ -6,7 +6,7 @@
 	var previousCommentsLength = -1;
 	var stableRetries = 0;
 	var maxStableRetries = 4; // Number of retries with same length before parsing
-	var debugMode = true; // Set to false to disable debug logging
+	var debugMode = false; // Set to false to disable debug logging
 	var commentsTimeout = null;
 	
 	debug = function (message) {

@@ -499,7 +499,7 @@
 				Promise.all([videoLengthPromise, timestampsPromise]).then(function (values) {
 					renderHighlights(values[0], values[1]);
 				}).catch(function (error) {
-					console.log(error);
+					console.log('YT Highlights Error:', error);
 				});
 			}
 		}, false);
