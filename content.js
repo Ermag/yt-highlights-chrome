@@ -16,7 +16,8 @@
 		delay: [400, 0],
 		duration: 0,
 		maxWidth: '250px',
-		theme: 'highlights'
+		theme: 'highlights',
+		placement: 'top'
 	})
 
 	function truncate(fullStr, strLen, separator) {
@@ -164,29 +165,21 @@
 		}
 	}
 
-	function generateHighlights(resolve, count, comments) {
-		var element = document.querySelector('#content #description');
-
-		if (element && comments.length) {
-			var desc = element.textContent.split('\n');
+	function generateHighlights(resolve, reject, comments, videoDetails) {
+		if (comments.length && videoDetails.shortDescription) {
+			var desc = videoDetails.shortDescription.split('\n');
 			var timeRegex = /([0-9]?[0-9]:)?[0-5]?[0-9]:[0-5][0-9]/g;
 			var timestamps = {};
 
 			// Loop trough comments and add check for timestamps
 			for (var c = 0; c < comments.length; c++) {
-				if (!comments[c].commentThreadRenderer) { continue; }
-				var txt = comments[c].commentThreadRenderer.comment.commentRenderer.contentText;
+				var comment = comments[c].split('\n');
 
-				if (txt.runs) {
-					var commentsBlob = txt.runs.map(function (e) { return e.text; }).join('');
-					commentsBlob = commentsBlob.split('\n');
+				for (var r = 0; r < comment.length; r++) {
+					var timestamp = comment[r].match(timeRegex);
 
-					for (var r = 0; r < commentsBlob.length; r++) {
-						var timestamp = commentsBlob[r].match(timeRegex);
-
-						if (timestamp) {
-							generateTimestamp(timestamps, timestamp[0], commentsBlob[r].replace(timestamp[0], ''));
-						}
+					if (timestamp) {
+						generateTimestamp(timestamps, timestamp[0], comment[r].replace(timestamp[0], ''));
 					}
 				}
 			}
@@ -202,22 +195,22 @@
 			}
 
 			resolve(timestamps);
-		} else if (count < maxRetryTimes) {
-			setTimeout(function () {
-				generateHighlights(resolve, ++count);
-			}, retryDelay);
+		} else {
+			reject('No comments or description found');
 		}
 	}
 
-	function getVideoLength(resolve, count) {
+	function getVideoLength(resolve, reject, count) {
 		var element = document.querySelector('#ytd-player .ytp-time-duration');
 
 		if (element) {
 			resolve(convertTimestamp(element.textContent));
 		} else if (count < maxRetryTimes) {
 			setTimeout(function () {
-				getVideoLength(resolve, ++count);
+				getVideoLength(resolve, reject, ++count);
 			}, retryDelay);
+		} else {
+			reject('No video length found');
 		}
 	}
 
@@ -266,7 +259,8 @@
 			tippy(document.querySelectorAll('.ytph-highlight'));
 
 			if (hlist.length && controlsWrapper && localStorage.getItem('ytph-highlights') !== 'false') {
-				controlsWrapper.style.display = 'inline-block';
+				controlsWrapper.style.display = 'block';
+				setChapterTitle();
 			}
 		} else if (count < maxRetryTimes) {
 			setTimeout(function () {
@@ -307,6 +301,9 @@
 
 			if (highlightsWrapper && highlightsWrapper.parentNode) {
 				highlightsWrapper.parentNode.removeChild(highlightsWrapper);
+			}
+			if (controlsWrapper) {
+				controlsWrapper.style.display = 'none';
 			}
 
 			window.postMessage({ requestComments: true }, '*');
@@ -349,7 +346,8 @@
 		if (value === 'true') {
 			highlightsWrapper.style.display = 'block';
 			if (highlightsList.length) {
-				controlsWrapper.style.display = 'inline-block';
+				controlsWrapper.style.display = 'block';
+				setChapterTitle();
 			}
 		} else {
 			highlightsWrapper.style.display = 'none';
@@ -406,26 +404,28 @@
 				nextHighlight(true);
 			}, false);
 
-			tippy(highlightsNextBtn, {
-				theme: 'highlights no-offset',
-				onShow: function (instance) {
-					var highlight = getNextHighlight();
+					tippy(highlightsNextBtn, {
+			theme: 'highlights no-offset',
+			placement: 'top',
+			onShow: function (instance) {
+				var highlight = getNextHighlight();
 
-					if (highlight && instance) {
-						instance.setContent(highlight.stamp + ' - ' + highlight.highlights.join('<br>'));
-					}
+				if (highlight && instance) {
+					instance.setContent(highlight.stamp + ' - ' + highlight.highlights.join('<br>'));
 				}
-			});
-			tippy(highlightsPrevBtn, {
-				theme: 'highlights no-offset',
-				onShow: function (instance) {
-					var highlight = getNextHighlight(true);
+			}
+		});
+		tippy(highlightsPrevBtn, {
+			theme: 'highlights no-offset',
+			placement: 'top',
+			onShow: function (instance) {
+				var highlight = getNextHighlight(true);
 
-					if (highlight && instance) {
-						instance.setContent(highlight.stamp + ' - ' + highlight.highlights.join('<br>'));
-					}
+				if (highlight && instance) {
+					instance.setContent(highlight.stamp + ' - ' + highlight.highlights.join('<br>'));
 				}
-			});
+			}
+		});
 			listenCurrent();
 		} else if (count < maxRetryTimes) {
 			setTimeout(function () {
@@ -469,37 +469,37 @@
 		var highlight = getNextHighlight(prev);
 
 		if (highlight) {
-			var links = document.querySelectorAll('a.yt-simple-endpoint.yt-formatted-string');
+			window.postMessage({ seekTo: highlight.time }, '*');
+		}
+	}
 
-			for (var i2 = 0; i2 < links.length; i2++) {
-				if (highlight.stamp === links[i2].innerText) {
-					links[i2].click();
-					break;
-				}
-			}
+	function setChapterTitle() {
+		var chapterTitle = document.querySelector('#ytd-player .ytp-chapter-title');
+
+		if (chapterTitle) {
+			chapterTitle.innerHTML = '• View Chapter';
 		}
 	}
 
 	window.onload = function () {
-		// console.log('Loaded Content');
-
 		window.addEventListener('message', function (event) {
-			if (controlsWrapper) {
-				controlsWrapper.style.display = 'none';
-			}
-
 			if (event.data && event.data.comments) {
-				var timestampsPromise = new Promise(function (resolve) {
-					generateHighlights(resolve, 0, event.data.comments);
+				if (controlsWrapper) {
+					controlsWrapper.style.display = 'none';
+				}
+				var timestampsPromise = new Promise(function (resolve, reject) {
+					generateHighlights(resolve, reject, event.data.comments, event.data.videoDetails);
 				});
 
-				var videoLengthPromise = new Promise(function (resolve) {
-					getVideoLength(resolve, 0);
+				var videoLengthPromise = new Promise(function (resolve, reject) {
+					getVideoLength(resolve, reject, 0);
 				});
 
 				// When highlights are generated and video length extracted render it all
 				Promise.all([videoLengthPromise, timestampsPromise]).then(function (values) {
 					renderHighlights(values[0], values[1]);
+				}).catch(function (error) {
+					console.log(error);
 				});
 			}
 		}, false);

@@ -34,34 +34,34 @@
 }
 
 .tippy-tooltip.highlights-theme {
-	padding: 5px 10px !important;
+	padding: 2px 10px !important;
 	background-color: rgba(28,28,28,0.9) !important;
 	border-radius: 2px !important;
 	font-weight: 500 !important;
 	color: #EEE !important;
-	margin-bottom: 100px;
-}
-
-body.no-scroll .tippy-tooltip.highlights-theme {
-	margin-bottom: 180px;
 }
 
 .tippy-tooltip.highlights-theme.no-offset-theme {
 	font-size: 13px !important;
-	margin-bottom: 5px !important;
 }
 
 .tippy-tooltip.highlights-theme p {
-	margin: 5px 0;
+	/* margin: 5px 0; */
 	padding: 0;
 }
 
 #ytd-player .ytd-highlights-controls button {
+	width: 38px;
+	padding: 0;
 	vertical-align: middle;
 }
 
 #ytd-player .ytp-chapter-container {
-	display: none;
+	flex: none;
+}
+
+#ytd-player .ytd-highlights-controls {
+	float: left;
 }
 
 #ytd-player .ytp-prev {
