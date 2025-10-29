@@ -55,6 +55,9 @@
 	padding: 0;
 	vertical-align: middle;
 }
+#ytd-player .ytd-highlights-controls button > svg {
+	padding: 0;
+}
 
 #ytd-player .ytp-chapter-container {
 	flex: none;
