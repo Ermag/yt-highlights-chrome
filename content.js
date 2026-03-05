@@ -375,7 +375,7 @@
 
 		if (popup) {
 			controlsWrapper = document.createElement('div');
-			controlsWrapper.setAttribute('class', 'ytd-highlights-controls');
+			controlsWrapper.setAttribute('class', 'ytd-highlights-controls ytp-autohide-fade-transition');
 			currentHighlight = document.createElement('span');
 			currentHighlight.setAttribute('id', 'ytd-highlights-text');
 			var highlightsNextBtn = document.createElement('button');
