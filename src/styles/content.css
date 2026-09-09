@@ -1,0 +1,214 @@
+/*
+ * Highlights for YouTube — content styles.
+ *
+ * Everything here renders inside YouTube's (always-dark) player chrome or its
+ * settings menu, so there is no light-theme variant to maintain. Colours live in
+ * custom properties on :root purely so they are easy to find and adjust.
+ */
+
+:root {
+	--ytph-accent: #ffd21e;
+	--ytph-accent-strong: #fff06a;
+	--ytph-focus: #ffffff;
+	--ytph-tooltip-bg: rgba(20, 20, 20, 0.96);
+	--ytph-tooltip-fg: #f1f1f1;
+	--ytph-control-fg: #fff;
+}
+
+/* -------------------------------------------------------------- markers --- */
+
+.ytph-markers {
+	position: absolute;
+	inset: 0;
+	/* Above `.ytp-progress-list` (39) and `.ytp-timed-markers-container` (40) so
+	   the ticks aren't painted over; below `.ytp-scrubber-container` (43). */
+	z-index: 41;
+	pointer-events: none;
+	/* Overridden per render by markers.ts based on how crowded the bar is. */
+	--ytph-marker-width: 4px;
+}
+
+.ytph-markers[hidden] {
+	display: none;
+}
+
+/* Generous transparent hit area; the visible tick is the ::before. */
+.ytph-marker {
+	position: absolute;
+	top: 50%;
+	width: 14px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	transform: translate(-50%, -50%);
+	pointer-events: auto;
+	cursor: pointer;
+}
+
+.ytph-marker::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: var(--ytph-marker-width);
+	height: 12px;
+	border-radius: 1px;
+	background: var(--ytph-accent);
+	transform: translate(-50%, -50%);
+	transition:
+		height 0.12s ease,
+		width 0.12s ease,
+		background 0.12s ease;
+}
+
+.ytph-marker:hover::before,
+.ytph-marker:focus-visible::before {
+	width: max(6px, calc(var(--ytph-marker-width) + 2px));
+	height: 20px;
+	background: var(--ytph-accent-strong);
+}
+
+.ytph-marker:focus-visible {
+	outline: 2px solid var(--ytph-focus);
+	outline-offset: 1px;
+	border-radius: 2px;
+}
+
+/* -------------------------------------------------------------- tooltip --- */
+
+.ytph-tooltip {
+	position: fixed;
+	z-index: 2147483647;
+	max-width: 340px;
+	max-height: 40vh;
+	overflow-y: auto;
+	padding: 7px 11px;
+	border-radius: 6px;
+	background: var(--ytph-tooltip-bg);
+	color: var(--ytph-tooltip-fg);
+	font:
+		500 12px/1.45 'Roboto',
+		'Arial',
+		sans-serif;
+	white-space: pre-line;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+	pointer-events: none;
+}
+
+.ytph-tooltip[hidden] {
+	display: none;
+}
+
+/* --------------------------------------------------- player controls --- */
+
+.ytph-controls {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 2px;
+	height: 100%;
+	vertical-align: top;
+}
+
+/* Match the dark pill YouTube's own control buttons (play, volume) wear. */
+.ytph-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	padding: 10px;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(0, 0, 0, 0.3);
+	color: var(--ytph-control-fg);
+	opacity: 0.9;
+	cursor: pointer;
+	transition:
+		background 0.1s ease,
+		opacity 0.1s ease;
+}
+
+.ytph-btn > svg {
+	width: 100%;
+	height: 100%;
+}
+
+.ytph-btn:hover {
+	background: rgba(0, 0, 0, 0.5);
+	opacity: 1;
+}
+
+.ytph-btn:focus-visible {
+	outline: 2px solid var(--ytph-focus);
+	outline-offset: 1px;
+}
+
+.ytph-prev > svg {
+	transform: rotate(180deg);
+}
+
+.ytph-toggle[aria-pressed='false'] {
+	opacity: 0.4;
+}
+
+.ytph-label {
+	box-sizing: border-box;
+	max-width: min(30vw, 260px);
+	height: 40px;
+	margin: 0 2px;
+	padding: 0 12px;
+	border-radius: 20px;
+	background: rgba(0, 0, 0, 0.3);
+	overflow: hidden;
+	font-size: 12px;
+	line-height: 40px;
+	color: #fff;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	cursor: default;
+}
+
+.ytph-label:focus-visible {
+	outline: 2px solid var(--ytph-focus);
+	outline-offset: 1px;
+}
+
+/* When highlights are switched off, only the toggle stays. */
+.ytph-controls.ytph-off .ytph-prev,
+.ytph-controls.ytph-off .ytph-next,
+.ytph-controls.ytph-off .ytph-label {
+	display: none;
+}
+
+/* Small players (miniplayer, narrow windows): drop the label, keep the buttons. */
+@media (max-width: 600px) {
+	.ytph-label {
+		display: none;
+	}
+}
+
+/* ------------------------------------------------- settings menu item --- */
+
+/* The icon inherits `currentColor`; match YouTube's own menu icons (pure white,
+   slightly brighter than the label text). */
+.ytph-menuitem .ytp-menuitem-icon {
+	color: #fff;
+}
+
+/* ------------------------------------------------------- edge cases --- */
+
+/* Never show over an ad. */
+.ad-showing .ytph-markers,
+.ad-interrupting .ytph-markers,
+#movie_player.ad-showing .ytph-controls,
+#movie_player.ad-interrupting .ytph-controls {
+	display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ytph-marker::before {
+		transition: none;
+	}
+}

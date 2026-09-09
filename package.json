@@ -1,0 +1,36 @@
+{
+	"name": "highlights-for-youtube",
+	"version": "4.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Chrome extension that renders video highlights on the YouTube player from timestamps in the description and top comments.",
+	"license": "MIT",
+	"scripts": {
+		"build": "node scripts/build.mjs",
+		"watch": "node scripts/build.mjs --watch",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"test": "vitest run --passWithNoTests",
+		"test:watch": "vitest",
+		"check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.17.0",
+		"@types/chrome": "^0.0.287",
+		"@types/node": "^22.10.5",
+		"esbuild": "^0.24.2",
+		"eslint": "^9.17.0",
+		"eslint-plugin-functional": "^7.1.0",
+		"jsdom": "^25.0.1",
+		"prettier": "^3.4.2",
+		"typescript": "^5.7.3",
+		"typescript-eslint": "^8.19.1",
+		"vitest": "^2.1.8"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}
