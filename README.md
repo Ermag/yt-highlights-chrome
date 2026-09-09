@@ -1,129 +1,81 @@
 # Highlights for YouTube
 
-A Chrome extension that automatically extracts and displays video highlights directly on YouTube's video player based on timestamps found in video descriptions and comments.
+A Chrome extension that reads timestamps out of a video's description and top
+comments and renders them as clickable highlight markers on the YouTube player.
 
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/jahmafmcpgdedfjfknmfkhaiejlfdcfc.svg)](https://chrome.google.com/webstore/detail/highlights-for-youtube/jahmafmcpgdedfjfknmfkhaiejlfdcfc)
 [![Chrome Web Store Users](https://img.shields.io/chrome-web-store/users/jahmafmcpgdedfjfknmfkhaiejlfdcfc.svg)](https://chrome.google.com/webstore/detail/highlights-for-youtube/jahmafmcpgdedfjfknmfkhaiejlfdcfc)
 
 ## Features
 
-### 🎯 Visual Timeline Highlights
-- **Progress Bar Markers**: Visual indicators on YouTube's progress bar showing where highlights occur
-- **Hover Tooltips**: Detailed highlight descriptions appear when hovering over markers
-- **Timestamp Positioning**: Markers are precisely positioned based on video length and timestamp location
+- **Progress-bar markers** — a tick for every timestamp found, positioned by
+  time; hover or focus for the label.
+- **Description _and_ comment parsing** — `MM:SS` and `HH:MM:SS`, one line or a
+  range (`0:00 - 0:30 Intro`), with URLs and surrounding punctuation stripped.
+- **Player controls** — previous / next highlight, the current highlight's label,
+  and a show/hide toggle. Also mirrored in the player settings menu.
+- **Click to jump** — a marker seeks straight to its timestamp.
+- **Setting remembered** across sessions (`chrome.storage`).
+- Keyboard accessible, hides during ads, and leaves YouTube's own chapters alone.
 
-### 🔍 Automatic Timestamp Detection
-- **Description Parsing**: Extracts timestamps from video descriptions using regex pattern matching
-- **Comment Analysis**: Scans top comments for user-generated timestamps and highlights
-- **Multiple Formats**: Supports both `MM:SS` and `HH:MM:SS` timestamp formats
-- **Smart Text Extraction**: Removes URLs and cleans up highlight text automatically
+## Install
 
-### 🎮 Navigation Controls
-- **Next/Previous Buttons**: Navigate between highlights with dedicated player controls
-- **Current Highlight Display**: Shows the current or upcoming highlight in the player controls
-- **Click to Jump**: Click any highlight marker to instantly jump to that timestamp
-- **Responsive Text**: Highlight text truncates based on available player width
+### Chrome Web Store
 
-### ⚙️ User Controls
-- **Toggle Highlights**: Enable/disable highlights through YouTube's settings menu
-- **Persistent Settings**: Your preference is saved and remembered across sessions
-- **Chapter Integration**: Seamlessly integrates with YouTube's existing chapter system
+[Highlights for YouTube](https://chrome.google.com/webstore/detail/highlights-for-youtube/jahmafmcpgdedfjfknmfkhaiejlfdcfc)
+→ **Add to Chrome**.
 
-## How It Works
+### From source
 
-1. **Content Detection**: When you visit a YouTube video, the extension automatically scans:
-   - The video description for timestamp patterns
-   - Top comments for user-generated timestamps
-   
-2. **Text Processing**: For each timestamp found, the extension:
-   - Extracts the associated text description
-   - Removes URLs and formatting characters
-   - Applies similarity detection to avoid duplicate highlights
-   
-3. **Visual Rendering**: Highlights are displayed as:
-   - Clickable markers on the progress bar
-   - Tooltips with detailed descriptions
-   - Navigation controls in the player interface
+Requires Node 20+ and Chrome 111+.
 
-## Installation
-
-### From Chrome Web Store
-1. Visit the [Chrome Web Store page](https://chrome.google.com/webstore/detail/highlights-for-youtube/jahmafmcpgdedfjfknmfkhaiejlfdcfc)
-2. Click "Add to Chrome"
-3. Confirm the installation
-
-### Manual Installation (Developer Mode)
-1. Download or clone this repository
-2. Open Chrome and navigate to `chrome://extensions/`
-3. Enable "Developer mode" in the top right
-4. Click "Load unpacked" and select the extension directory
-5. The extension will be installed and active
-
-## Usage
-
-1. **Automatic Operation**: The extension works automatically on any YouTube video page
-2. **View Highlights**: Look for markers on the video progress bar
-3. **Navigate**: Use the previous/next buttons in the player controls or click markers directly
-4. **Toggle**: Access YouTube's settings menu (gear icon) to enable/disable highlights
-5. **Tooltips**: Hover over highlight markers to see detailed descriptions
-
-## Technical Details
-
-### Architecture
-- **Manifest V3**: Built using the latest Chrome extension standards
-- **Content Scripts**: Runs in the context of YouTube pages for DOM manipulation
-- **Injected Scripts**: Accesses YouTube's internal APIs for video data and control
-- **Tippy.js Integration**: Uses Tippy.js library for smooth tooltip animations
-
-### Browser Compatibility
-- **Chrome**: Fully supported (Manifest V3)
-- **Chromium-based browsers**: Should work with minor modifications
-- **Firefox**: Requires manifest adaptation for WebExtensions
-
-### Performance Features
-- **Lazy Loading**: Comments are loaded progressively to avoid performance impact
-- **Debounced Processing**: Prevents excessive DOM manipulation during video changes
-- **Memory Management**: Cleans up event listeners and observers when navigating
-
-## File Structure
-
-```
-├── manifest.json          # Extension configuration and permissions
-├── content.js             # Main extension logic and UI manipulation
-├── content.css            # Styling for highlight elements
-├── inject.js              # YouTube API interaction and data extraction
-├── tippy.all.min.js       # Tooltip library for highlight descriptions
-└── img/                   # Extension icons
-    ├── icon-16.png
-    ├── icon-48.png
-    └── icon-128.png
+```sh
+npm ci
+npm run build      # writes dist/
 ```
 
-## Contributing
+Then `chrome://extensions` → enable **Developer mode** → **Load unpacked** →
+select the `dist/` folder.
 
-Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
+## Development
 
-### Development Setup
-1. Clone the repository
-2. Make your changes
-3. Test in Chrome by loading the unpacked extension
-4. Submit a pull request with a clear description of changes
+```sh
+npm run watch       # rebuild dist/ on change (unminified, sourcemaps)
+npm test            # vitest
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint
+npm run check       # typecheck + lint + format + test + build
+```
+
+### Layout
+
+```
+src/
+  core/        pure, DOM-free, 100% unit-tested — parsing, dedupe, layout, navigation
+  shared/      cross-world message bus + async primitives
+  page/        MAIN world: the #movie_player API + the full description text
+  content/     ISOLATED world: DOM, the overlay UI, and the per-video lifecycle
+  styles/      content.css
+  manifest.json
+scripts/build.mjs   esbuild → dist/{content,page}.js + assets
+_locales/           chrome.i18n messages
+```
+
+The extension loads two content scripts. `src/page` runs in the page's **main
+world** (Chrome 111+ `content_scripts.world`) so it can call the YouTube player
+API; `src/content` runs in the **isolated world** and owns everything the
+extension draws. They talk over a private `CustomEvent` channel
+(`src/shared/protocol.ts`). All the parsing logic is pure and lives in
+`src/core`, independent of the DOM.
+
+`package.json` is the single source of truth for the version — `npm run build`
+stamps it into `dist/manifest.json`.
 
 ## Privacy
 
-This extension:
-- **Local Processing**: All timestamp extraction and processing happens locally
-- **No Data Collection**: Does not collect, store, or transmit any user data
-- **YouTube Only**: Only operates on YouTube.com domains
-- **No Analytics**: No usage tracking or analytics
+All processing is local. The extension only runs on `youtube.com`, stores a
+single boolean setting via `chrome.storage.local`, and sends nothing anywhere.
 
 ## License
 
-This project is open source. Please refer to the license file for usage terms.
-
-## Support
-
-For issues, feature requests, or questions:
-- **Chrome Web Store**: Leave a review with details
-- **GitHub Issues**: Create an issue in this repository
-- **Web Store Page**: [Highlights for YouTube](https://chrome.google.com/webstore/detail/highlights-for-youtube/jahmafmcpgdedfjfknmfkhaiejlfdcfc)
+`package.json` declares MIT. Add a `LICENSE` file to make it official.

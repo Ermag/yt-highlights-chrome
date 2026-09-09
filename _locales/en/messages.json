@@ -1,0 +1,14 @@
+{
+	"previousHighlight": {
+		"message": "Previous highlight",
+		"description": "Accessible label for the previous-highlight button"
+	},
+	"nextHighlight": {
+		"message": "Next highlight",
+		"description": "Accessible label for the next-highlight button"
+	},
+	"toggleHighlights": {
+		"message": "Toggle highlights",
+		"description": "Accessible label for the show/hide toggle button"
+	}
+}
