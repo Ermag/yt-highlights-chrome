@@ -8,6 +8,7 @@
 	"scripts": {
 		"build": "node scripts/build.mjs",
 		"watch": "node scripts/build.mjs --watch",
+		"package": "node scripts/package.mjs",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
