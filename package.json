@@ -18,19 +18,24 @@
 		"check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build"
 	},
 	"devDependencies": {
-		"@eslint/js": "^9.17.0",
-		"@types/chrome": "^0.0.287",
-		"@types/node": "^22.10.5",
-		"esbuild": "^0.24.2",
-		"eslint": "^9.17.0",
-		"eslint-plugin-functional": "^7.1.0",
-		"jsdom": "^25.0.1",
-		"prettier": "^3.4.2",
-		"typescript": "^5.7.3",
-		"typescript-eslint": "^8.19.1",
-		"vitest": "^2.1.8"
+		"@eslint/js": "^10.0.1",
+		"@types/chrome": "^0.2.9",
+		"@types/node": "^24.13.4",
+		"esbuild": "^0.28.2",
+		"eslint": "^10.10.0",
+		"eslint-plugin-functional": "^10.0.0",
+		"jsdom": "^30.0.1",
+		"prettier": "^3.9.6",
+		"typescript": "~5.9.3",
+		"typescript-eslint": "^8.70.0",
+		"vitest": "^5.0.0"
 	},
 	"engines": {
-		"node": ">=20"
+		"node": "^20.19 || ^22.13 || >=24"
+	},
+	"overrides": {
+		"eslint-plugin-functional": {
+			"deepmerge-ts": "^8.0.2"
+		}
 	}
 }
