@@ -6,6 +6,7 @@ const at = (seconds: number): Highlight => ({
 	seconds,
 	stamp: String(seconds),
 	labels: [String(seconds)],
+	sources: ['description'],
 });
 const list: readonly Highlight[] = [at(0), at(50), at(150), at(300)];
 

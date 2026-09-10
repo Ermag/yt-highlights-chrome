@@ -8,6 +8,7 @@
 import { buildHighlights, type Highlight } from '../core';
 import { noop, throttle, waitFor } from '../shared/async';
 import { onPageMessage, sendToPage, type PlayerState } from '../shared/protocol';
+import { scrollToSourceComment } from './comments';
 import { createControls, type Controls } from './controls';
 import {
 	SELECTORS,
@@ -100,7 +101,13 @@ function createSession(videoId: string): Session {
 		void mountInto(SELECTORS.progressBar, markers.element, abort.signal);
 
 		if (!controls) {
-			controls = createControls({ highlights, onSeek, onToggle, tooltip });
+			controls = createControls({
+				highlights,
+				onSeek,
+				onToggle,
+				onLabelActivate: scrollToSourceComment,
+				tooltip,
+			});
 			void mountInto(SELECTORS.leftControls, controls.element, abort.signal);
 			detachTime = attachTimeUpdates((seconds) => controls?.update(seconds), abort.signal);
 		}

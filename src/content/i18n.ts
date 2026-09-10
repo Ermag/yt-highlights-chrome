@@ -6,6 +6,9 @@ const MESSAGES = {
 	previousHighlight: 'Previous highlight',
 	nextHighlight: 'Next highlight',
 	toggleHighlights: 'Toggle highlights',
+	showHighlights: 'Show highlights',
+	hideHighlights: 'Hide highlights',
+	openSourceComment: 'Go to comment',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

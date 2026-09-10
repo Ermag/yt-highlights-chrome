@@ -8,6 +8,7 @@ const h = (seconds: number, ...labels: string[]): Highlight => ({
 	seconds,
 	stamp: String(seconds),
 	labels,
+	sources: ['description'],
 });
 
 const fakeTooltip = (): Tooltip => ({ show: vi.fn(), hide: vi.fn(), destroy: vi.fn() });

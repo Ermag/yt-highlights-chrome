@@ -4,10 +4,15 @@ import type { Highlight } from '../core';
 import { createControls } from './controls';
 import type { Tooltip } from './tooltip';
 
-const h = (seconds: number, label: string): Highlight => ({
+const h = (
+	seconds: number,
+	label: string,
+	sources: Highlight['sources'] = ['description'],
+): Highlight => ({
 	seconds,
 	stamp: String(seconds),
 	labels: [label],
+	sources,
 });
 
 const fakeTooltip = (): Tooltip => ({ show: vi.fn(), hide: vi.fn(), destroy: vi.fn() });
@@ -111,6 +116,50 @@ describe('createControls', () => {
 		expect(q(element, '.ytph-toggle')?.getAttribute('aria-pressed')).toBe('false');
 	});
 
+	it('names the highlight prev/next will jump to in a tooltip on hover', () => {
+		const tooltip = fakeTooltip();
+		const { element } = createControls(opts({ tooltip }));
+		document.body.appendChild(element);
+		mockCurrentTime(150); // between B (100) and C (200)
+
+		const next = q<HTMLElement>(element, '.ytph-next')!;
+		next.dispatchEvent(new MouseEvent('mouseenter'));
+		expect(tooltip.show).toHaveBeenCalledWith(next, ['Next highlight', '200  C']);
+
+		const prev = q<HTMLElement>(element, '.ytph-prev')!;
+		prev.dispatchEvent(new Event('focus'));
+		expect(tooltip.show).toHaveBeenCalledWith(prev, ['Previous highlight', '100  B']);
+
+		next.dispatchEvent(new MouseEvent('mouseleave'));
+		expect(tooltip.hide).toHaveBeenCalled();
+	});
+
+	it('follows the nav anchor so the tooltip matches where a rapid press lands', () => {
+		const tooltip = fakeTooltip();
+		const { element } = createControls(opts({ tooltip }));
+		document.body.appendChild(element);
+		mockCurrentTime(250); // section C; playhead frozen (simulates seek lag)
+
+		const prev = q<HTMLElement>(element, '.ytph-prev')!;
+		click(prev); // -> 200, anchor = 200
+		prev.dispatchEvent(new MouseEvent('mouseenter'));
+		expect(tooltip.show).toHaveBeenLastCalledWith(prev, ['Previous highlight', '100  B']);
+	});
+
+	it("shows the toggle button's tooltip as Hide/Show highlights by state", () => {
+		const tooltip = fakeTooltip();
+		const { element, setEnabledState } = createControls(opts({ tooltip }));
+		document.body.appendChild(element);
+		const toggle = q<HTMLElement>(element, '.ytph-toggle')!;
+
+		toggle.dispatchEvent(new MouseEvent('mouseenter'));
+		expect(tooltip.show).toHaveBeenLastCalledWith(toggle, ['Hide highlights']);
+
+		setEnabledState(false);
+		toggle.dispatchEvent(new MouseEvent('mouseenter'));
+		expect(tooltip.show).toHaveBeenLastCalledWith(toggle, ['Show highlights']);
+	});
+
 	it('shows the full label in a tooltip only when it is truncated', () => {
 		const tooltip = fakeTooltip();
 		const { element, update } = createControls(opts({ tooltip }));
@@ -129,5 +178,65 @@ describe('createControls', () => {
 
 		label.dispatchEvent(new MouseEvent('mouseleave'));
 		expect(tooltip.hide).toHaveBeenCalled();
+	});
+
+	it('links the label to its comment only when the shown highlight is comment-only', () => {
+		const onLabelActivate = vi.fn();
+		const { element, update } = createControls(
+			opts({
+				highlights: [h(0, 'Desc', ['description']), h(100, 'Comment', ['comment'])],
+				onLabelActivate,
+			}),
+		);
+		document.body.appendChild(element);
+		const label = q<HTMLElement>(element, '.ytph-label')!;
+
+		update(0); // description highlight — not a link
+		expect(label.classList.contains('ytph-label--link')).toBe(false);
+		expect(label.getAttribute('role')).toBeNull();
+		click(label);
+		expect(onLabelActivate).not.toHaveBeenCalled();
+
+		update(100); // comment-only highlight — a link
+		expect(label.classList.contains('ytph-label--link')).toBe(true);
+		expect(label.getAttribute('role')).toBe('button');
+		click(label);
+		expect(onLabelActivate).toHaveBeenCalledWith(
+			expect.objectContaining({ seconds: 100, sources: ['comment'] }),
+		);
+
+		update(0); // back to a description highlight — link affordance removed
+		expect(label.classList.contains('ytph-label--link')).toBe(false);
+	});
+
+	it('activates the comment link with Enter and Space', () => {
+		const onLabelActivate = vi.fn();
+		const { element, update } = createControls(
+			opts({ highlights: [h(0, 'Comment', ['comment'])], onLabelActivate }),
+		);
+		document.body.appendChild(element);
+		const label = q<HTMLElement>(element, '.ytph-label')!;
+		update(0);
+
+		label.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		label.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+		expect(onLabelActivate).toHaveBeenCalledTimes(2);
+	});
+
+	it('appends a comment hint to the label tooltip when it is a link', () => {
+		const tooltip = fakeTooltip();
+		const { element, update } = createControls(
+			opts({
+				highlights: [h(0, 'Comment', ['comment'])],
+				onLabelActivate: vi.fn(),
+				tooltip,
+			}),
+		);
+		document.body.appendChild(element);
+		const label = q<HTMLElement>(element, '.ytph-label')!;
+
+		update(0); // not truncated, but a link
+		label.dispatchEvent(new MouseEvent('mouseenter'));
+		expect(tooltip.show).toHaveBeenCalledWith(label, ['Go to comment']);
 	});
 });
