@@ -1,6 +1,6 @@
 {
 	"name": "highlights-for-youtube",
-	"version": "4.0.0",
+	"version": "4.1.0",
 	"private": true,
 	"type": "module",
 	"description": "Chrome extension that renders video highlights on the YouTube player from timestamps in the description and top comments.",

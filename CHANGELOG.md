@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.1.0
+
+### Added
+
+- The current-highlight label in the player controls links to its source
+  comment when the timestamp was found only in a comment — click it (or press
+  Enter) to scroll that comment into view and flash it.
+- Hover / focus tooltips on the previous, next and toggle control buttons.
+  Previous and next name the highlight they jump to; the toggle reads "Hide
+  highlights" / "Show highlights".
+
+### Changed
+
+- The control buttons' hover state matches YouTube's modern player: a
+  translucent overlay fades in over the pill, with a frosted-glass backdrop,
+  instead of the whole button darkening.
+
 ## 4.0.0
 
 Full rewrite: TypeScript with a bundled build, a pure functional core covered by
