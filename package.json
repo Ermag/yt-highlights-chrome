@@ -1,9 +1,9 @@
 {
 	"name": "highlights-for-youtube",
-	"version": "4.1.0",
+	"version": "4.1.1",
 	"private": true,
 	"type": "module",
-	"description": "Chrome extension that renders video highlights on the YouTube player from timestamps in the description and top comments.",
+	"description": "Turn the timestamps in a video's description and comments into clickable chapter markers on the YouTube progress bar.",
 	"license": "MIT",
 	"scripts": {
 		"build": "node scripts/build.mjs",

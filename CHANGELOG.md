@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.1.1
+
+### Changed
+
+- Store-listing summary rewritten to lead with what the extension does
+  ("clickable chapter markers on the YouTube progress bar"). No functional
+  changes; `manifest.json` `description` is the Web Store summary field, so the
+  copy change ships as a version bump.
+
 ## 4.1.0
 
 ### Added
