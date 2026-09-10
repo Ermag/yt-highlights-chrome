@@ -1,5 +1,7 @@
 # Highlights for YouTube
 
+![Highlights for YouTube](store-images/big-promo.jpg)
+
 A Chrome extension that reads timestamps out of a video's description and top
 comments and renders them as clickable highlight markers on the YouTube player.
 
