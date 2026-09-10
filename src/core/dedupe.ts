@@ -12,12 +12,21 @@ import { formatSeconds } from './timestamp';
 import type { Highlight, HighlightSource, RawEntry } from './types';
 
 const NON_MEANINGFUL = /[^\p{L}\p{N}\p{Extended_Pictographic}]+/gu;
-const normalize = (label: string): string => label.toLowerCase().replace(NON_MEANINGFUL, '');
+
+/** Fold a label to its meaningful characters for equality checks (case, spacing
+ *  and punctuation removed). Exported so the content layer can match a highlight
+ *  label back to the comment line it came from. */
+export const normalizeLabel = (label: string): string =>
+	label.toLowerCase().replace(NON_MEANINGFUL, '');
+
+const normalize = normalizeLabel;
 
 const uniqueBy = <T>(items: readonly T[], key: (item: T) => string): readonly T[] => {
 	const keys = items.map(key);
 	return items.filter((_, index) => keys.indexOf(keys[index] ?? '') === index);
 };
+
+const SOURCE_ORDER: readonly HighlightSource[] = ['description', 'comment'];
 
 function distinctLabels(entries: readonly RawEntry[]): readonly string[] {
 	const bySource = (source: HighlightSource): readonly string[] =>
@@ -29,14 +38,22 @@ function distinctLabels(entries: readonly RawEntry[]): readonly string[] {
 	return uniqueBy(ordered, normalize).filter((label) => normalize(label).length > 0);
 }
 
+/** The sources that carried this second's timestamp, description before comment. */
+const distinctSources = (entries: readonly RawEntry[]): readonly HighlightSource[] =>
+	SOURCE_ORDER.filter((source) => entries.some((entry) => entry.source === source));
+
 /** Merge entries into highlights, sorted ascending by time. */
 export function mergeEntries(entries: readonly RawEntry[]): readonly Highlight[] {
 	const seconds = [...new Set(entries.map((entry) => entry.seconds))];
 	return seconds
-		.map((second) => ({
-			seconds: second,
-			stamp: formatSeconds(second),
-			labels: distinctLabels(entries.filter((entry) => entry.seconds === second)),
-		}))
+		.map((second) => {
+			const atSecond = entries.filter((entry) => entry.seconds === second);
+			return {
+				seconds: second,
+				stamp: formatSeconds(second),
+				labels: distinctLabels(atSecond),
+				sources: distinctSources(atSecond),
+			};
+		})
 		.toSorted((a, b) => a.seconds - b.seconds);
 }

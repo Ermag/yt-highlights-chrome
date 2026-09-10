@@ -10,5 +10,17 @@
 	"toggleHighlights": {
 		"message": "Toggle highlights",
 		"description": "Accessible label for the show/hide toggle button"
+	},
+	"showHighlights": {
+		"message": "Show highlights",
+		"description": "Tooltip on the toggle button when highlights are currently hidden"
+	},
+	"hideHighlights": {
+		"message": "Hide highlights",
+		"description": "Tooltip on the toggle button when highlights are currently shown"
+	},
+	"openSourceComment": {
+		"message": "Go to comment",
+		"description": "Tooltip hint on the player highlight label when it links back to the comment the timestamp came from"
 	}
 }

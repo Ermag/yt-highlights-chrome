@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { clusterByProximity, positionPercent } from './layout';
 import type { Highlight } from './types';
 
-const at = (seconds: number): Highlight => ({ seconds, stamp: String(seconds), labels: [] });
+const at = (seconds: number): Highlight => ({
+	seconds,
+	stamp: String(seconds),
+	labels: [],
+	sources: ['description'],
+});
 
 describe('positionPercent', () => {
 	it('maps seconds onto 0–100', () => {

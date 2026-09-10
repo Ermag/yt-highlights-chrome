@@ -111,8 +111,10 @@
 	vertical-align: top;
 }
 
-/* Match the dark pill YouTube's own control buttons (play, volume) wear. */
+/* Match the frosted dark pill YouTube's own control buttons (play, prev/next)
+   wear in the modern player. */
 .ytph-btn {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -122,12 +124,9 @@
 	border: 0;
 	border-radius: 50%;
 	background: rgba(0, 0, 0, 0.3);
+	backdrop-filter: blur(16px);
 	color: var(--ytph-control-fg);
-	opacity: 0.9;
 	cursor: pointer;
-	transition:
-		background 0.1s ease,
-		opacity 0.1s ease;
 }
 
 .ytph-btn > svg {
@@ -135,9 +134,25 @@
 	height: 100%;
 }
 
-.ytph-btn:hover {
-	background: rgba(0, 0, 0, 0.5);
-	opacity: 1;
+/* Native hover/press: a translucent white wash fades in over the pill (rather
+   than the pill darkening), inset slightly from its edge. Matches YouTube's own
+   `.ytp-play-button::after` treatment, easing and all. */
+.ytph-btn::after {
+	content: '';
+	position: absolute;
+	inset: 4px;
+	border-radius: inherit;
+	background-color: transparent;
+	pointer-events: none;
+	transition: background-color 0.2s cubic-bezier(0.05, 0, 0, 1);
+}
+
+.ytph-btn:hover::after {
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+.ytph-btn:active::after {
+	background-color: rgba(255, 255, 255, 0.2);
 }
 
 .ytph-btn:focus-visible {
@@ -161,6 +176,7 @@
 	padding: 0 12px;
 	border-radius: 20px;
 	background: rgba(0, 0, 0, 0.3);
+	backdrop-filter: blur(16px);
 	overflow: hidden;
 	font-size: 12px;
 	line-height: 40px;
@@ -173,6 +189,31 @@
 .ytph-label:focus-visible {
 	outline: 2px solid var(--ytph-focus);
 	outline-offset: 1px;
+}
+
+/* Comment-sourced label: acts as a link back to that comment. */
+.ytph-label--link {
+	cursor: pointer;
+}
+
+.ytph-label--link:hover,
+.ytph-label--link:focus-visible {
+	text-decoration: underline;
+}
+
+/* Brief tint on the comment we jumped to, so it's easy to spot. */
+@keyframes ytph-comment-flash {
+	from {
+		background-color: rgba(255, 210, 30, 0.28);
+	}
+	to {
+		background-color: transparent;
+	}
+}
+
+.ytph-comment-flash {
+	animation: ytph-comment-flash 2s ease-out;
+	border-radius: 12px;
 }
 
 /* When highlights are switched off, only the toggle stays. */
@@ -208,7 +249,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.ytph-marker::before {
+	.ytph-marker::before,
+	.ytph-btn::after {
 		transition: none;
 	}
 }

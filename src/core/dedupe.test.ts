@@ -66,4 +66,19 @@ describe('mergeEntries', () => {
 	it('derives the display stamp from seconds', () => {
 		expect(mergeEntries([entry(5025, 'x')])[0]?.stamp).toBe('1:23:45');
 	});
+
+	it('records the contributing sources, description before comment', () => {
+		expect(mergeEntries([entry(0, 'A')])[0]?.sources).toEqual(['description']);
+		expect(mergeEntries([entry(0, 'A', 'comment')])[0]?.sources).toEqual(['comment']);
+		expect(mergeEntries([entry(0, 'A', 'comment'), entry(0, 'B')])[0]?.sources).toEqual([
+			'description',
+			'comment',
+		]);
+	});
+
+	it('reports a comment source even when its label is empty', () => {
+		const out = mergeEntries([entry(0, 'Intro'), entry(0, '', 'comment')]);
+		expect(out[0]?.labels).toEqual(['Intro']);
+		expect(out[0]?.sources).toEqual(['description', 'comment']);
+	});
 });

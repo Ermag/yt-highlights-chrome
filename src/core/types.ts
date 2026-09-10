@@ -16,6 +16,12 @@ export interface Highlight {
 	readonly stamp: string;
 	/** Distinct labels, description-sourced first. May be empty. */
 	readonly labels: readonly string[];
+	/**
+	 * Which text the timestamp was found in, description-first. `['comment']`
+	 * alone means the label came only from a comment — the content layer uses
+	 * that to make the controls label a link back to that comment.
+	 */
+	readonly sources: readonly HighlightSource[];
 }
 
 /** A run of highlights close enough together to render as one marker. */

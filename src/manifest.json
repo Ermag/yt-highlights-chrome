@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Highlights for YouTube",
-	"version": "4.0.0",
+	"version": "4.1.0",
 	"description": "View highlights on the video player, that are generated from timestamps found in the description and top comments.",
 	"default_locale": "en",
 	"minimum_chrome_version": "111",
