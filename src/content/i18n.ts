@@ -8,6 +8,7 @@ const MESSAGES = {
 	toggleHighlights: 'Toggle highlights',
 	showHighlights: 'Show highlights',
 	hideHighlights: 'Hide highlights',
+	noHighlights: 'No highlights in this video',
 	openSourceComment: 'Go to comment',
 } as const;
 

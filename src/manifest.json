@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Highlights for YouTube",
-	"version": "4.1.1",
+	"version": "4.1.2",
 	"description": "Turn the timestamps in a video's description and comments into clickable chapter markers on the YouTube progress bar.",
 	"default_locale": "en",
 	"minimum_chrome_version": "111",

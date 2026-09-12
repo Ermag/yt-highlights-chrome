@@ -19,6 +19,10 @@
 		"message": "Hide highlights",
 		"description": "Tooltip on the toggle button when highlights are currently shown"
 	},
+	"noHighlights": {
+		"message": "No highlights in this video",
+		"description": "Tooltip on the toggle button when this video has no highlights to show"
+	},
 	"openSourceComment": {
 		"message": "Go to comment",
 		"description": "Tooltip hint on the player highlight label when it links back to the comment the timestamp came from"

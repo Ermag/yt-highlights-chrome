@@ -103,7 +103,7 @@ describe('content app (integration)', () => {
 		expect(markers[0]?.getAttribute('aria-label')).toContain('the part everyone talks about');
 	});
 
-	it('mounts the settings toggle even when the video has no highlights', async () => {
+	it('mounts a toggle-only control (and the settings toggle) when the video has no highlights', async () => {
 		stubBridge(playerState({ description: 'Just a plain description, no timestamps.' }));
 		const { start } = await import('./app');
 
@@ -111,7 +111,10 @@ describe('content app (integration)', () => {
 		await vi.advanceTimersByTimeAsync(4000);
 
 		expect(document.querySelectorAll('.ytph-markers button.ytph-marker')).toHaveLength(0);
-		expect(document.querySelector('.ytph-controls')).toBeNull();
+		const controls = document.querySelector('.ytph-controls');
+		expect(controls).not.toBeNull();
+		expect(controls?.classList.contains('ytph-empty')).toBe(true);
+		expect(controls?.querySelector('.ytph-toggle')).not.toBeNull();
 
 		const menuItem = document.querySelector('.ytp-panel-menu .ytph-menuitem');
 		expect(menuItem).not.toBeNull();
