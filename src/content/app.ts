@@ -69,6 +69,11 @@ function createSession(videoId: string): Session {
 	let controls: Controls | null = null;
 	let menuItem: SettingsMenuItem | null = null;
 	let highlights: readonly Highlight[] = [];
+	// Guards `onPlayerState` below: without it, a player-state message that
+	// arrives while `highlights` is still building could render the toggle-only
+	// empty state and consume the `renderedDuration` dedup guard before the real
+	// highlights are ready to render.
+	let highlightsReady = false;
 	let renderedDuration = -1;
 	let detachTime = noop;
 
@@ -86,19 +91,24 @@ function createSession(videoId: string): Session {
 	};
 
 	const render = (durationSeconds: number): void => {
-		if (highlights.length === 0 || durationSeconds === renderedDuration) return;
+		if (durationSeconds === renderedDuration) return;
 		renderedDuration = durationSeconds;
 
 		tooltip ??= createTooltip();
-		markers?.destroy();
-		markers = createMarkers({
-			highlights,
-			durationSeconds,
-			onSeek,
-			tooltip,
-			progressBarWidthPx: query(SELECTORS.progressBar)?.getBoundingClientRect().width,
-		});
-		void mountInto(SELECTORS.progressBar, markers.element, abort.signal);
+
+		// Markers need highlights to plot; the toggle mounts regardless, so the
+		// extension still reads as present on a video with none (see controls.ts).
+		if (highlights.length > 0) {
+			markers?.destroy();
+			markers = createMarkers({
+				highlights,
+				durationSeconds,
+				onSeek,
+				tooltip,
+				progressBarWidthPx: query(SELECTORS.progressBar)?.getBoundingClientRect().width,
+			});
+			void mountInto(SELECTORS.progressBar, markers.element, abort.signal);
+		}
 
 		if (!controls) {
 			controls = createControls({
@@ -151,13 +161,14 @@ function createSession(videoId: string): Session {
 			comments,
 			durationSeconds: settled?.durationSeconds ?? 0,
 		});
+		highlightsReady = true;
 		render(settled?.durationSeconds ?? 0);
 	})();
 
 	return {
 		videoId,
 		onPlayerState: (state) => {
-			if (highlights.length > 0 && state.durationSeconds > 0) render(state.durationSeconds);
+			if (highlightsReady && state.durationSeconds > 0) render(state.durationSeconds);
 		},
 		onEnabledChange: applyEnabled,
 		dispose: () => {

@@ -223,6 +223,24 @@ describe('createControls', () => {
 		expect(onLabelActivate).toHaveBeenCalledTimes(2);
 	});
 
+	it('shows only the toggle, with a "no highlights" tooltip, when the video has none', () => {
+		const tooltip = fakeTooltip();
+		const { element } = createControls(opts({ highlights: [], tooltip }));
+		document.body.appendChild(element);
+
+		expect(element.classList.contains('ytph-empty')).toBe(true);
+		expect(q(element, '.ytph-badge')?.textContent).toBe('0');
+
+		const toggle = q<HTMLElement>(element, '.ytph-toggle')!;
+		toggle.dispatchEvent(new MouseEvent('mouseenter'));
+		expect(tooltip.show).toHaveBeenLastCalledWith(toggle, ['No highlights in this video']);
+	});
+
+	it('badges the toggle with the highlight count', () => {
+		const { element } = createControls(opts({ highlights: [h(0, 'A'), h(100, 'B')] }));
+		expect(q(element, '.ytph-toggle .ytph-badge')?.textContent).toBe('2');
+	});
+
 	it('appends a comment hint to the label tooltip when it is a link', () => {
 		const tooltip = fakeTooltip();
 		const { element, update } = createControls(

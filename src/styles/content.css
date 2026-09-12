@@ -168,6 +168,28 @@
 	opacity: 0.4;
 }
 
+/* Highlight count. Same weight/color as YouTube's own elapsed-time readout
+   (`.ytp-time-current`); sized down to fit the button's corner. */
+.ytph-badge {
+	position: absolute;
+	top: 1px;
+	right: 1px;
+	min-width: 14px;
+	height: 14px;
+	padding: 0 3px;
+	border-radius: 7px;
+	background: rgba(0, 0, 0, 0.2);
+	font:
+		500 10px/14px 'YouTube Noto',
+		Roboto,
+		Arial,
+		Helvetica,
+		sans-serif;
+	color: #fff;
+	text-align: center;
+	pointer-events: none;
+}
+
 .ytph-label {
 	box-sizing: border-box;
 	max-width: min(30vw, 260px);
@@ -216,10 +238,13 @@
 	border-radius: 12px;
 }
 
-/* When highlights are switched off, only the toggle stays. */
+/* When highlights are switched off, or this video has none, only the toggle stays. */
 .ytph-controls.ytph-off .ytph-prev,
 .ytph-controls.ytph-off .ytph-next,
-.ytph-controls.ytph-off .ytph-label {
+.ytph-controls.ytph-off .ytph-label,
+.ytph-controls.ytph-empty .ytph-prev,
+.ytph-controls.ytph-empty .ytph-next,
+.ytph-controls.ytph-empty .ytph-label {
 	display: none;
 }
 

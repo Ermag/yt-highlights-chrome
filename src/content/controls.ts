@@ -1,7 +1,8 @@
 /**
  * The player-controls group: previous / next highlight, the current highlight
- * label, and the on/off toggle (which stays visible even when highlights are
- * hidden, so the feature can be switched back on).
+ * label, and the on/off toggle. The toggle stays visible even when highlights
+ * are hidden (so the feature can be switched back on) or when this video has
+ * none at all (so the extension still reads as present, not broken).
  */
 import { activeHighlight, nextHighlight, previousHighlight, type Highlight } from '../core';
 import { getCurrentTime } from './dom';
@@ -31,10 +32,14 @@ export interface Controls {
 
 export function createControls(options: ControlsOptions): Controls {
 	const { highlights, onSeek, onToggle, onLabelActivate, tooltip } = options;
+	const hasHighlights = highlights.length > 0;
 
 	const element = document.createElement('div');
 	// Not `.ytp-button` — YouTube's rules for it would fight our flex layout.
 	element.className = 'ytph-controls';
+	// No highlights on this video: only the toggle stays, so the extension still
+	// reads as present (and working) rather than silently doing nothing.
+	element.classList.toggle('ytph-empty', !hasHighlights);
 
 	const prevButton = button('ytph-prev', t('previousHighlight'), svgIcon(CHEVRON, '0 0 30 32'));
 	const nextButton = button('ytph-next', t('nextHighlight'), svgIcon(CHEVRON, '0 0 30 32'));
@@ -42,6 +47,10 @@ export function createControls(options: ControlsOptions): Controls {
 	label.className = 'ytph-label';
 	label.tabIndex = 0;
 	const toggleButton = button('ytph-toggle', t('toggleHighlights'), svgIcon(STAR, '0 0 24 24'));
+	const badge = document.createElement('span');
+	badge.className = 'ytph-badge';
+	badge.textContent = String(highlights.length);
+	toggleButton.appendChild(badge);
 
 	element.append(prevButton, nextButton, label, toggleButton);
 
@@ -97,7 +106,9 @@ export function createControls(options: ControlsOptions): Controls {
 		};
 	attachTip(prevButton, targetTip('previousHighlight', previousHighlight));
 	attachTip(nextButton, targetTip('nextHighlight', nextHighlight));
-	attachTip(toggleButton, () => [t(toggleOn ? 'hideHighlights' : 'showHighlights')]);
+	attachTip(toggleButton, () => [
+		hasHighlights ? t(toggleOn ? 'hideHighlights' : 'showHighlights') : t('noHighlights'),
+	]);
 
 	// When the shown highlight came only from a comment, the label links back to
 	// that comment (see app.ts → scrollToSourceComment).
