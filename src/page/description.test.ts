@@ -37,4 +37,32 @@ describe('readDescription', () => {
 		document.body.appendChild(el);
 		expect(readDescription('vid1')).toBe('0:00 partial');
 	});
+
+	it("prefers the player response when it is this video's", () => {
+		mountExpander('stale text from the previous video');
+		const playerResponse = {
+			videoDetails: { videoId: 'vid1', shortDescription: '0:00 fresh' },
+		};
+		expect(readDescription('vid1', { playerResponse, pageReady: false })).toBe('0:00 fresh');
+	});
+
+	it('skips a player response for another video', () => {
+		mountExpander('0:00 panel text');
+		const playerResponse = { videoDetails: { videoId: 'old', shortDescription: '0:00 old' } };
+		expect(readDescription('vid1', { playerResponse, pageReady: true })).toBe(
+			'0:00 panel text',
+		);
+	});
+
+	it("doesn't read the rendered panel before the page has caught up", () => {
+		mountExpander('stale text from the previous video');
+		expect(readDescription('vid1', { pageReady: false })).toBe('');
+	});
 });
+
+function mountExpander(content: string): void {
+	const el = document.createElement('div') as WithText;
+	el.id = 'description-inline-expander';
+	el.text = { content };
+	document.body.appendChild(el);
+}

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { throttle, waitFor, waitForStableCount } from './async';
+import { debounce, throttle, waitFor, waitForStableCount } from './async';
 
 beforeEach(() => {
 	vi.useFakeTimers();
@@ -65,5 +65,24 @@ describe('throttle', () => {
 		expect(fn.mock.calls).toEqual([[1]]);
 		vi.advanceTimersByTime(100);
 		expect(fn.mock.calls).toEqual([[1], [3]]);
+	});
+});
+
+describe('debounce', () => {
+	it('runs once after calls pause, and can be cancelled', () => {
+		const fn = vi.fn();
+		const debounced = debounce(fn, 100);
+		debounced();
+		vi.advanceTimersByTime(60);
+		debounced();
+		vi.advanceTimersByTime(60);
+		expect(fn).not.toHaveBeenCalled();
+		vi.advanceTimersByTime(40);
+		expect(fn).toHaveBeenCalledOnce();
+
+		debounced();
+		debounced.cancel();
+		vi.advanceTimersByTime(200);
+		expect(fn).toHaveBeenCalledOnce();
 	});
 });

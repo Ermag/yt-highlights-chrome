@@ -4,12 +4,16 @@
  */
 import type { PlayerState } from '../shared/protocol';
 import { hasNativeChapters } from './chapters';
-import { readDescription } from './description';
+import { readDescription, type PlayerResponse } from './description';
+import { isAdShowing, isWatchPageReady } from './watch-page';
 
 /** Page-world facts about the current video that `toPlayerState` can't read itself. */
 export interface PlayerExtras {
 	readonly description?: string;
 	readonly hasNativeChapters?: boolean;
+	readonly pageReady?: boolean;
+	/** An ad is playing, so `getDuration()` is the ad's length, not the video's. */
+	readonly adShowing?: boolean;
 }
 
 interface VideoData {
@@ -23,6 +27,8 @@ export interface PlayerApi {
 	getCurrentTime(): number;
 	seekTo(seconds: number, allowSeekAhead?: boolean): void;
 	getVideoData(): VideoData;
+	/** Not on every player build — optional so its absence degrades, not breaks. */
+	getPlayerResponse?(): PlayerResponse | null | undefined;
 }
 
 export type YouTubePlayer = Element & PlayerApi;
@@ -49,7 +55,9 @@ export function getPlayer(): YouTubePlayer | null {
 
 /**
  * Pure projection of a player into a {@link PlayerState}.
- * Falls back to `?v=` for the id; treats live / not-yet-known durations as `0`.
+ * Falls back to `?v=` for the id. Duration comes from the player response's
+ * `lengthSeconds` when it matches the video (immune to ads), else from
+ * `getDuration()` unless an ad is playing; live / not-yet-known is `0`.
  */
 export function toPlayerState(
 	player: PlayerApi,
@@ -61,9 +69,10 @@ export function toPlayerState(
 	if (videoId === '') return null;
 
 	const isLive = data.isLive ?? false;
-	const rawDuration = Number(player.getDuration());
-	const durationSeconds =
-		!isLive && Number.isFinite(rawDuration) && rawDuration > 0 ? rawDuration : 0;
+	const details = player.getPlayerResponse?.()?.videoDetails;
+	const length = details?.videoId === videoId ? Number(details.lengthSeconds) : 0;
+	const playerDuration = extras.adShowing ? 0 : Number(player.getDuration());
+	const durationSeconds = isLive ? 0 : positiveOr(length, positiveOr(playerDuration, 0));
 
 	return {
 		videoId,
@@ -71,17 +80,29 @@ export function toPlayerState(
 		isLive,
 		description: extras.description ?? '',
 		hasNativeChapters: extras.hasNativeChapters ?? false,
+		pageReady: extras.pageReady ?? false,
 	};
 }
 
+const positiveOr = (value: number, fallback: number): number =>
+	Number.isFinite(value) && value > 0 ? value : fallback;
+
 export function readPlayerState(): PlayerState | null {
 	const player = getPlayer();
-	const base = player ? toPlayerState(player, window.location.search) : null;
-	if (!base) return null;
+	const base = player
+		? toPlayerState(player, window.location.search, { adShowing: isAdShowing(player) })
+		: null;
+	if (!player || !base) return null;
+	const pageReady = isWatchPageReady(base.videoId);
 	return {
 		...base,
-		description: readDescription(base.videoId),
-		hasNativeChapters: hasNativeChapters(),
+		description: readDescription(base.videoId, {
+			playerResponse: player.getPlayerResponse?.(),
+			pageReady,
+		}),
+		// The chapter panels are page DOM too: meaningless until the page catches up.
+		hasNativeChapters: pageReady && hasNativeChapters(),
+		pageReady,
 	};
 }
 

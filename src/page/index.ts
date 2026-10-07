@@ -3,7 +3,7 @@
  *
  * The only code that touches YouTube's internals. Answers `query-player`,
  * performs `seek`, and pushes a fresh {@link PlayerState} whenever the SPA swaps
- * videos or the media element reports new metadata. Never touches the
+ * videos, the page DOM catches up, or the media element reports new metadata. Never touches the
  * extension's own UI — that is the content script's job.
  */
 import { onContentMessage, sendToContent } from '../shared/protocol';
@@ -27,7 +27,9 @@ onContentMessage((message) => {
 
 // YouTube is a SPA: the player data and the <video> element change with no reload.
 // `loadedmetadata` / `durationchange` don't bubble, so listen in the capture phase.
+// `yt-page-data-updated` marks the watch-page DOM catching up (`pageReady`).
 document.addEventListener('yt-navigate-finish', pushPlayerState);
+document.addEventListener('yt-page-data-updated', pushPlayerState);
 document.addEventListener('loadedmetadata', pushPlayerState, true);
 document.addEventListener('durationchange', pushPlayerState, true);
 

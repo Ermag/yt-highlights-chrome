@@ -17,6 +17,7 @@ describe('toPlayerState', () => {
 			isLive: false,
 			description: '',
 			hasNativeChapters: false,
+			pageReady: false,
 		});
 	});
 
@@ -24,9 +25,11 @@ describe('toPlayerState', () => {
 		const state = toPlayerState(player(), '?v=zzz', {
 			description: '0:00 Intro',
 			hasNativeChapters: true,
+			pageReady: true,
 		});
 		expect(state?.description).toBe('0:00 Intro');
 		expect(state?.hasNativeChapters).toBe(true);
+		expect(state?.pageReady).toBe(true);
 	});
 
 	it('falls back to ?v= when the player has no id yet', () => {
@@ -56,6 +59,33 @@ describe('toPlayerState', () => {
 			isLive: true,
 			description: '',
 			hasNativeChapters: false,
+			pageReady: false,
 		});
+	});
+
+	it("prefers the player response's lengthSeconds when it is this video's", () => {
+		const p = player({
+			getPlayerResponse: () => ({
+				videoDetails: { videoId: 'abc123', lengthSeconds: '612' },
+			}),
+		});
+		expect(toPlayerState(p, '')?.durationSeconds).toBe(612);
+	});
+
+	it('ignores a player response that still belongs to the previous video', () => {
+		const p = player({
+			getPlayerResponse: () => ({ videoDetails: { videoId: 'old', lengthSeconds: '99' } }),
+		});
+		expect(toPlayerState(p, '')?.durationSeconds).toBe(300);
+	});
+
+	it("doesn't take an ad's length for the video's", () => {
+		expect(toPlayerState(player(), '', { adShowing: true })?.durationSeconds).toBe(0);
+		const withResponse = player({
+			getPlayerResponse: () => ({
+				videoDetails: { videoId: 'abc123', lengthSeconds: '612' },
+			}),
+		});
+		expect(toPlayerState(withResponse, '', { adShowing: true })?.durationSeconds).toBe(612);
 	});
 });
