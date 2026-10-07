@@ -80,4 +80,4 @@ single boolean setting via `chrome.storage.local`, and sends nothing anywhere.
 
 ## License
 
-`package.json` declares MIT. Add a `LICENSE` file to make it official.
+[MIT](LICENSE) © Ermag (Philip Ganchev).
