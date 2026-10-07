@@ -292,4 +292,58 @@ describe('content app (integration)', () => {
 		expect(markerCount()).toBe(3);
 		expect(document.querySelector('.ytp-left-controls .ytph-controls')).not.toBeNull();
 	});
+
+	it('keeps the last known duration when a later push reports 0', async () => {
+		const bridge = stubBridge(playerState());
+		await startApp();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(markerCount()).toBe(3);
+
+		bridge.state = playerState({ durationSeconds: 0 }); // e.g. mid-roll ad
+		bridge.push();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(markerCount()).toBe(3);
+	});
+
+	it('re-reads the page shortly after ready to catch late chapter panels', async () => {
+		document.querySelector('#comments #contents')!.replaceChildren();
+		const bridge = stubBridge(playerState());
+		await startApp();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(markerCount()).toBe(3);
+
+		// The chapters panel renders after the ready push; nothing pushes again.
+		bridge.state = playerState({ hasNativeChapters: true });
+		await vi.advanceTimersByTimeAsync(3100);
+		expect(markerCount()).toBe(0);
+	});
+
+	it('carries keyboard focus over when highlights update under the user', async () => {
+		stubBridge(playerState());
+		await startApp();
+		await vi.advanceTimersByTimeAsync(4000);
+
+		const next = document.querySelector<HTMLElement>('.ytph-next')!;
+		next.focus();
+		addComment('7:30 the comment that loaded on scroll');
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(document.querySelector('.ytph-next')).not.toBe(next); // controls were rebuilt
+		expect(document.activeElement?.classList.contains('ytph-next')).toBe(true);
+	});
+
+	it("doesn't leave a hover tooltip stuck when the hovered control is replaced", async () => {
+		// No highlights yet, so no markers whose teardown would hide the tooltip.
+		stubBridge(playerState({ description: 'No timestamps here.' }));
+		await startApp();
+		await vi.advanceTimersByTimeAsync(4000);
+
+		document.querySelector('.ytph-toggle')!.dispatchEvent(new MouseEvent('mouseenter'));
+		await vi.advanceTimersByTimeAsync(500);
+		expect(document.querySelector<HTMLElement>('.ytph-tooltip')?.hidden).toBe(false);
+
+		addComment('7:30 the comment that loaded on scroll');
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(document.querySelector<HTMLElement>('.ytph-tooltip')?.hidden).toBe(true);
+	});
 });

@@ -113,4 +113,47 @@ describe('watchComments', () => {
 		await vi.advanceTimersByTimeAsync(3000);
 		expect(onChange).toHaveBeenCalledWith(['3:30 😂']);
 	});
+
+	it('keeps the comments it has seen when the section is re-sorted', async () => {
+		const contents = mountSection();
+		addThread(contents, '0:00 pinned chapter list');
+		addThread(contents, 'nice');
+		const onChange = watch();
+		await vi.advanceTimersByTimeAsync(3000);
+
+		// "Newest first": YouTube swaps the list out for different threads.
+		contents.replaceChildren();
+		addThread(contents, 'first!');
+		addThread(contents, '2:00 newest');
+		addThread(contents, 'spam');
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(onChange).toHaveBeenLastCalledWith([
+			'0:00 pinned chapter list',
+			'nice',
+			'first!',
+			'2:00 newest',
+			'spam',
+		]);
+	});
+
+	it('restores the nudged section style as soon as it is aborted', async () => {
+		const contents = mountSection();
+		const section = contents.parentElement!;
+		section.setAttribute('style', 'margin: 1px;');
+		const abort = new AbortController();
+		watch(abort.signal);
+		await vi.advanceTimersByTimeAsync(100);
+		expect(section.getAttribute('style')).toContain('visibility: hidden');
+
+		abort.abort();
+		expect(section.getAttribute('style')).toBe('margin: 1px;');
+
+		// The next video's session nudges and restores the real original.
+		const next = new AbortController();
+		watch(next.signal);
+		await vi.advanceTimersByTimeAsync(100);
+		next.abort();
+		expect(section.getAttribute('style')).toBe('margin: 1px;');
+	});
 });

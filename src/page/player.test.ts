@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { toPlayerState, type PlayerApi } from './player';
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from 'vitest';
+import { readPlayerState, toPlayerState, type PlayerApi } from './player';
 
 const player = (over: Partial<PlayerApi> = {}): PlayerApi => ({
 	getDuration: () => 300,
@@ -87,5 +88,47 @@ describe('toPlayerState', () => {
 			}),
 		});
 		expect(toPlayerState(withResponse, '', { adShowing: true })?.durationSeconds).toBe(612);
+	});
+});
+
+describe('readPlayerState', () => {
+	afterEach(() => {
+		document.body.innerHTML = '';
+	});
+
+	/** Mid-navigation DOM: the player has `vid2`, the page still shows `vid1`'s panels. */
+	function mountPage(pageVideoId: string): void {
+		document.body.innerHTML = `
+			<ytd-watch-flexy video-id="${pageVideoId}"></ytd-watch-flexy>
+			<ytd-engagement-panel-section-list-renderer
+				target-id="engagement-panel-macro-markers-description-chapters"></ytd-engagement-panel-section-list-renderer>
+			<div id="description-inline-expander">0:00 vid1's description</div>
+			<div id="movie_player"></div>`;
+		Object.assign(document.querySelector('#movie_player')!, {
+			...player({ getVideoData: () => ({ video_id: 'vid2' }) }),
+			getPlayerResponse: () => ({
+				videoDetails: {
+					videoId: 'vid2',
+					shortDescription: '0:00 vid2 intro',
+					lengthSeconds: '900',
+				},
+			}),
+		});
+	}
+
+	it("doesn't trust page DOM until it belongs to the player's video", () => {
+		mountPage('vid1');
+		expect(readPlayerState()).toMatchObject({
+			videoId: 'vid2',
+			pageReady: false,
+			hasNativeChapters: false, // vid1's chapter panel
+			description: '0:00 vid2 intro', // from the player response, not vid1's panel
+			durationSeconds: 900,
+		});
+	});
+
+	it('reads the page DOM once it has caught up', () => {
+		mountPage('vid2');
+		expect(readPlayerState()).toMatchObject({ pageReady: true, hasNativeChapters: true });
 	});
 });

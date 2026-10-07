@@ -84,4 +84,26 @@ describe('mountSettingsMenuItem', () => {
 
 		expect(rebuilt.querySelector('.ytp-panel-menu')?.lastElementChild).toBe(ourItem());
 	});
+
+	it('stops reordering when YouTube keeps moving its own items after ours', async () => {
+		const root = panel(2);
+		mountSettingsMenuItem(settingsMenu(root), { checked: true, onToggle: () => {} });
+		const list = root.querySelector('.ytp-panel-menu')!;
+		const theirs = list.firstElementChild!;
+
+		// A renderer that insists its item goes last whenever ours is.
+		let moves = 0;
+		const youtube = new MutationObserver(() => {
+			if (list.lastElementChild === ourItem() && moves < 50) {
+				moves += 1;
+				list.appendChild(theirs);
+			}
+		});
+		youtube.observe(list, { childList: true });
+		list.appendChild(theirs);
+		await flush();
+		youtube.disconnect();
+
+		expect(moves).toBeLessThan(10);
+	});
 });

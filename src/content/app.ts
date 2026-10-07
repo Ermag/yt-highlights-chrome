@@ -15,6 +15,7 @@ import {
 	getCurrentTime,
 	getVideoElement,
 	query,
+	queryAll,
 	waitForElement,
 	watchVideoId,
 } from './dom';
@@ -33,6 +34,9 @@ interface Session {
 	onEnabledChange: () => void;
 	dispose: () => void;
 }
+
+/** Re-reads of the page state after it first reports ready (see `usePageState`). */
+const FOLLOW_UP_QUERY_MS = [1000, 3000];
 
 let session: Session | null = null;
 let latestState: PlayerState | null = null;
@@ -144,7 +148,13 @@ function createSession(videoId: string): Session {
 					})
 				: null;
 
+		// Swapping the controls out from under the pointer/keyboard: a removed node
+		// never gets mouseleave/blur, so hide the tooltip here and carry focus over.
 		const previous = controls;
+		const focusIndex = previous
+			? focusableIn(previous.element).findIndex((el) => el === document.activeElement)
+			: -1;
+		tooltip.hide();
 		controls = createControls({
 			highlights,
 			onSeek,
@@ -154,6 +164,7 @@ function createSession(videoId: string): Session {
 		});
 		if (previous?.element.isConnected) previous.element.replaceWith(controls.element);
 		previous?.destroy();
+		if (focusIndex >= 0) focusableIn(controls.element)[focusIndex]?.focus();
 
 		keepMounted();
 		applyEnabled();
@@ -175,7 +186,12 @@ function createSession(videoId: string): Session {
 	};
 
 	const usePageState = (state: PlayerState): void => {
-		page = state;
+		// A later 0 means "unknown right now" (e.g. mid-roll ad), not a new length:
+		// keep the last known one rather than tearing the markers down.
+		page =
+			state.durationSeconds > 0 || !page
+				? state
+				: { ...state, durationSeconds: page.durationSeconds };
 		// Comments are page DOM as well: only read them once it is this video's.
 		if (!watchingComments) {
 			watchingComments = true;
@@ -186,6 +202,14 @@ function createSession(videoId: string): Session {
 				sendToPage({ kind: 'query-player' });
 				refresh();
 			});
+			// The chapter panels can render just after the page reports ready, and
+			// nothing else may push afterwards (e.g. comments disabled): re-read.
+			for (const delayMs of FOLLOW_UP_QUERY_MS) {
+				const timer = setTimeout(() => {
+					sendToPage({ kind: 'query-player' });
+				}, delayMs);
+				signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+			}
 		}
 		refresh();
 	};
@@ -246,6 +270,9 @@ function createSession(videoId: string): Session {
 		},
 	};
 }
+
+const focusableIn = (root: Element): readonly HTMLElement[] =>
+	queryAll<HTMLElement>('button, [tabindex]', root);
 
 function mountIfDetached(selector: string, node: Element | undefined): void {
 	if (node && !node.isConnected) query(selector)?.appendChild(node);

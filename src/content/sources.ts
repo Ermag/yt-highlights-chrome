@@ -17,9 +17,11 @@ const CHECK_INTERVAL_MS = 250;
 const CHANGE_DEBOUNCE_MS = 400;
 
 /**
- * Calls `onChange` with the current comment texts once the first batch has
- * settled (or failed to load), then again whenever they change, until `signal`
- * aborts. Never calls it twice with the same list.
+ * Calls `onChange` with the comment texts once the first batch has settled (or
+ * failed to load), then again whenever more threads load, until `signal`
+ * aborts. Comments accumulate — first seen first, capped — so re-sorting the
+ * section (e.g. "Newest first") adds to the top comments rather than replacing
+ * them. Never calls it twice with the same list.
  */
 export function watchComments(
 	signal: AbortSignal,
@@ -32,15 +34,21 @@ export function watchComments(
 		}).catch(() => null);
 		if (!container || signal.aborted) return;
 
-		let lastKey = '[]';
+		const seen: string[] = [];
+		let lastCount = -1;
 		let settled = false;
 		const emit = (): void => {
 			if (signal.aborted) return;
-			const comments = readThreads(container);
-			const key = JSON.stringify(comments);
-			if (key === lastKey) return;
-			lastKey = key;
-			onChange(comments);
+			// Likes, relative times, reply expansion etc. mutate the section
+			// constantly; only a change in the thread count can bring new comments.
+			const count = countThreads(container);
+			if (count === lastCount) return;
+			lastCount = count;
+			const fresh = readThreads(container).filter((text) => !seen.includes(text));
+			const room = MAX_COMMENTS - seen.length;
+			if (fresh.length === 0 || room <= 0) return;
+			seen.push(...fresh.slice(0, room));
+			onChange([...seen]);
 		};
 
 		// Until the first batch settles, mutations are just the batch streaming in.
@@ -48,7 +56,7 @@ export function watchComments(
 		const observer = new MutationObserver(() => {
 			if (settled) emitSoon();
 		});
-		observer.observe(container, { childList: true, subtree: true, characterData: true });
+		observer.observe(container, { childList: true, subtree: true });
 		signal.addEventListener(
 			'abort',
 			() => {
@@ -66,6 +74,9 @@ export function watchComments(
 
 async function settleFirstBatch(container: HTMLElement, signal: AbortSignal): Promise<void> {
 	const restore = nudgeIntoLoading(container);
+	// Restore synchronously on abort: waiting for the next poll would let the next
+	// video's session nudge first and record our nudge style as the original.
+	signal.addEventListener('abort', restore, { once: true });
 	try {
 		await waitFor(() => (countThreads(container) > 0 ? true : null), {
 			signal,
@@ -106,7 +117,10 @@ function nudgeIntoLoading(container: HTMLElement): () => void {
 		'position: absolute; top: 0; left: 0; width: 1px; height: 1px; visibility: hidden;',
 	);
 	window.dispatchEvent(new Event('scroll'));
+	let restored = false;
 	return () => {
+		if (restored) return;
+		restored = true;
 		if (previous === null) container.removeAttribute('style');
 		else container.setAttribute('style', previous);
 	};
