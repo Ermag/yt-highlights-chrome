@@ -10,7 +10,7 @@ const PLAYER_HTML = `
 	<div id="movie_player">
 		<div class="ytp-progress-bar"></div>
 		<div class="ytp-left-controls"></div>
-		<div class="ytp-settings-menu"><div class="ytp-panel-menu"></div></div>
+		<div class="ytp-settings-menu"><div class="ytp-panel"><div class="ytp-panel-menu"></div></div></div>
 		<video></video>
 	</div>
 	<ytd-comments id="comments"><div id="contents">

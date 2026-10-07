@@ -23,10 +23,16 @@ export function mountSettingsMenuItem(
 ): SettingsMenuItem {
 	const item = buildItem(options.checked, options.onToggle);
 
+	// Opening a submenu (Quality, Sleep timer, …) swaps the root panel for one
+	// with a back-button header, so only a header-less panel is the root. Keep
+	// the item last: YouTube can add its own items after we mount.
 	const ensureMounted = (): void => {
-		const panel = menu.querySelector('.ytp-panel-menu');
-		if (panel && !panel.contains(item)) {
-			panel.insertBefore(item, panel.firstChild);
+		const root = [...menu.querySelectorAll('.ytp-panel')].find(
+			(panel) => !panel.querySelector('.ytp-panel-header'),
+		);
+		const list = root?.querySelector('.ytp-panel-menu');
+		if (list && list.lastElementChild !== item) {
+			list.appendChild(item);
 		}
 	};
 
