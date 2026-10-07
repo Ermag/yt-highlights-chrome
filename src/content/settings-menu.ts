@@ -7,6 +7,9 @@
 import { extensionName } from './i18n';
 import { STAR, svgIcon } from './icons';
 
+/** How often one menu list may push our item back to the bottom. */
+const MAX_REORDERS = 5;
+
 export interface SettingsMenuOptions {
 	readonly checked: boolean;
 	readonly onToggle: () => void;
@@ -23,11 +26,23 @@ export function mountSettingsMenuItem(
 ): SettingsMenuItem {
 	const item = buildItem(options.checked, options.onToggle);
 
+	// Opening a submenu (Quality, Sleep timer, …) swaps the root panel for one
+	// with a back-button header, so only a header-less panel is the root. Keep
+	// the item last: YouTube can add its own items after we mount. Reordering is
+	// capped per list so we can never ping-pong with YouTube's own reordering.
+	const reorders = new WeakMap<Element, number>();
 	const ensureMounted = (): void => {
-		const panel = menu.querySelector('.ytp-panel-menu');
-		if (panel && !panel.contains(item)) {
-			panel.insertBefore(item, panel.firstChild);
+		const root = [...menu.querySelectorAll('.ytp-panel')].find(
+			(panel) => !panel.querySelector('.ytp-panel-header'),
+		);
+		const list = root?.querySelector('.ytp-panel-menu');
+		if (!list || list.lastElementChild === item) return;
+		if (list.contains(item)) {
+			const count = reorders.get(list) ?? 0;
+			if (count >= MAX_REORDERS) return;
+			reorders.set(list, count + 1);
 		}
+		list.appendChild(item);
 	};
 
 	const observer = new MutationObserver(ensureMounted);

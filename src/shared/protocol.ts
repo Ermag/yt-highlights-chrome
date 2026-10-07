@@ -19,6 +19,12 @@ export interface PlayerState {
 	readonly description: string;
 	/** YouTube already shows chapters for this video (so we skip the description). */
 	readonly hasNativeChapters: boolean;
+	/**
+	 * The watch page's metadata DOM (description panel, chapter panels, comments)
+	 * has caught up with this video. During an SPA navigation the player switches
+	 * videos ~1s before that DOM does, so DOM-derived facts are stale until then.
+	 */
+	readonly pageReady: boolean;
 }
 
 /** MAIN -> ISOLATED. */

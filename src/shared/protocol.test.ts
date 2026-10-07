@@ -30,6 +30,7 @@ describe('protocol bus', () => {
 			isLive: false,
 			description: '0:00 hi',
 			hasNativeChapters: false,
+			pageReady: true,
 		};
 		sendToContent({ kind: 'player-state', state });
 

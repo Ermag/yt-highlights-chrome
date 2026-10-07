@@ -1,9 +1,9 @@
 /**
  * Lifecycle orchestration for the ISOLATED world.
  *
- * One {@link Session} per `/watch` video: fetch the player state (via the MAIN
- * bridge) and the page text, build highlights, mount the UI, keep it in sync
- * with playback, and tear everything down on navigation.
+ * One {@link Session} per `/watch` video: follow the player state (via the MAIN
+ * bridge) and the comments, rebuild highlights whenever either changes, keep the
+ * UI in sync with playback, and tear everything down on navigation.
  */
 import { buildHighlights, type Highlight } from '../core';
 import { noop, throttle, waitFor } from '../shared/async';
@@ -15,39 +15,40 @@ import {
 	getCurrentTime,
 	getVideoElement,
 	query,
+	queryAll,
 	waitForElement,
 	watchVideoId,
 } from './dom';
 import { createMarkers, type Markers } from './markers';
 import { mountSettingsMenuItem, type SettingsMenuItem } from './settings-menu';
-import { readComments } from './sources';
+import { watchComments } from './sources';
 import { getSettings, onSettingsChanged, setEnabled } from './store';
 import { createTooltip, type Tooltip } from './tooltip';
 
 interface Session {
 	readonly videoId: string;
+	/** Kicks off the async work. Separate from construction so that replies the
+	 *  bridge sends synchronously already find this session installed. */
+	start: () => void;
 	onPlayerState: (state: PlayerState) => void;
 	onEnabledChange: () => void;
 	dispose: () => void;
 }
 
+/** Re-reads of the page state after it first reports ready (see `usePageState`). */
+const FOLLOW_UP_QUERY_MS = [1000, 3000];
+
 let session: Session | null = null;
 let latestState: PlayerState | null = null;
 let enabled = true;
 
-export async function start(): Promise<void> {
+/** Starts following the page. Resolves to a stop function (used by tests). */
+export async function start(): Promise<() => void> {
 	enabled = (await getSettings()).enabled;
 
-	onSettingsChanged((settings) => {
+	const offSettings = onSettingsChanged((settings) => {
 		enabled = settings.enabled;
 		session?.onEnabledChange();
-	});
-
-	onPageMessage((message) => {
-		latestState = message.kind === 'player-state' ? message.state : null;
-		if (message.kind === 'player-state' && session?.videoId === message.state.videoId) {
-			session.onPlayerState(message.state);
-		}
 	});
 
 	const sync = (): void => {
@@ -55,27 +56,57 @@ export async function start(): Promise<void> {
 		if (videoId === session?.videoId) return;
 		session?.dispose();
 		session = videoId ? createSession(videoId) : null;
+		session?.start();
 	};
 
-	window.addEventListener('yt-navigate-finish', sync);
+	const offPage = onPageMessage((message) => {
+		latestState = message.kind === 'player-state' ? message.state : null;
+		// Backstop for a missed navigation event: any bridge push re-checks the URL.
+		sync();
+		if (message.kind === 'player-state' && session?.videoId === message.state.videoId) {
+			session.onPlayerState(message.state);
+		}
+	});
+
+	// `sync` is idempotent, so listen broadly: navigate-start tears the old video's
+	// overlay down as soon as the URL changes (back/forward), the others catch up.
+	const navigationEvents = ['yt-navigate-start', 'yt-navigate-finish', 'yt-page-data-updated'];
+	for (const type of navigationEvents) document.addEventListener(type, sync);
 	sync();
+
+	return () => {
+		offSettings();
+		offPage();
+		for (const type of navigationEvents) document.removeEventListener(type, sync);
+		session?.dispose();
+		session = null;
+		latestState = null;
+	};
 }
 
+/**
+ * Highlights are a pure function of two inputs — the page state (description,
+ * native-chapter flag, duration) and the comments — so the session just keeps
+ * the freshest of each and re-renders whenever the result changes.
+ * Nothing is decided once and frozen: a late comment batch, a corrected duration
+ * (e.g. after an ad) or a chapter panel that rendered late all flow through.
+ */
 function createSession(videoId: string): Session {
 	const abort = new AbortController();
+	const { signal } = abort;
 
 	let tooltip: Tooltip | null = null;
 	let markers: Markers | null = null;
 	let controls: Controls | null = null;
 	let menuItem: SettingsMenuItem | null = null;
-	let highlights: readonly Highlight[] = [];
-	// Guards `onPlayerState` below: without it, a player-state message that
-	// arrives while `highlights` is still building could render the toggle-only
-	// empty state and consume the `renderedDuration` dedup guard before the real
-	// highlights are ready to render.
-	let highlightsReady = false;
-	let renderedDuration = -1;
-	let detachTime = noop;
+
+	// Latest page state for this video whose DOM-derived fields can be trusted.
+	let page: PlayerState | null = null;
+	let comments: readonly string[] = [];
+	let watchingComments = false;
+	// Set when the page never reported ready in time: take what the player has.
+	let acceptUnready = false;
+	let renderedKey: string | null = null;
 
 	const onSeek = (seconds: number): void => {
 		sendToPage({ kind: 'seek', seconds });
@@ -90,111 +121,168 @@ function createSession(videoId: string): Session {
 		menuItem?.setChecked(enabled);
 	};
 
-	const render = (durationSeconds: number): void => {
-		if (durationSeconds === renderedDuration) return;
-		renderedDuration = durationSeconds;
-
-		tooltip ??= createTooltip();
-
-		// Markers need highlights to plot; the toggle mounts regardless, so the
-		// extension still reads as present on a video with none (see controls.ts).
-		if (highlights.length > 0) {
-			markers?.destroy();
-			markers = createMarkers({
-				highlights,
-				durationSeconds,
-				onSeek,
-				tooltip,
-				progressBarWidthPx: query(SELECTORS.progressBar)?.getBoundingClientRect().width,
-			});
-			void mountInto(SELECTORS.progressBar, markers.element, abort.signal);
-		}
-
-		if (!controls) {
-			controls = createControls({
-				highlights,
-				onSeek,
-				onToggle,
-				onLabelActivate: scrollToSourceComment,
-				tooltip,
-			});
-			void mountInto(SELECTORS.leftControls, controls.element, abort.signal);
-			detachTime = attachTimeUpdates((seconds) => controls?.update(seconds), abort.signal);
-		}
-
-		applyEnabled();
-		controls?.update(getCurrentTime());
+	// YouTube can rebuild the player chrome (ads, layout switches); re-attach
+	// rather than vanish. Cheap enough to run on every time tick. Never after
+	// dispose — that would resurrect this video's overlay on the next one.
+	const keepMounted = (): void => {
+		if (signal.aborted) return;
+		mountIfDetached(SELECTORS.progressBar, markers?.element);
+		mountIfDetached(SELECTORS.leftControls, controls?.element);
 	};
 
-	// The settings toggle is the extension's global on/off switch and its main
-	// discoverability surface, so it mounts on every /watch page — independent of
-	// whether this particular video has any highlights.
-	void waitForElement(SELECTORS.settingsMenu, { signal: abort.signal, timeoutMs: 20_000 })
-		.then((menu) => {
-			if (!abort.signal.aborted) {
-				menuItem = mountSettingsMenuItem(menu, { checked: enabled, onToggle });
-			}
-		})
-		.catch(noop);
+	const render = (highlights: readonly Highlight[], durationSeconds: number): void => {
+		tooltip ??= createTooltip();
 
-	void (async () => {
-		const state = await waitFor(
-			() => {
-				if (latestState?.videoId === videoId) return latestState;
-				sendToPage({ kind: 'query-player' });
-				return null;
-			},
-			{ signal: abort.signal, intervalMs: 500, timeoutMs: 15_000 },
-		).catch(() => null);
+		// Markers need highlights and a known duration to plot; the toggle mounts
+		// regardless, so the extension still reads as present (see controls.ts).
+		markers?.destroy();
+		markers =
+			highlights.length > 0 && durationSeconds > 0
+				? createMarkers({
+						highlights,
+						durationSeconds,
+						onSeek,
+						tooltip,
+						progressBarWidthPx: query(SELECTORS.progressBar)?.getBoundingClientRect()
+							.width,
+					})
+				: null;
 
-		const comments = await readComments(abort.signal);
-		if (abort.signal.aborted) return;
-
-		// The description and chapter state can settle after our first read (lazy
-		// panels, pre-roll ads), so take the freshest snapshot before building.
-		sendToPage({ kind: 'query-player' });
-		const settled = latestState?.videoId === videoId ? latestState : state;
-
-		highlights = buildHighlights({
-			// YouTube already puts description timestamps on the bar as chapters.
-			description: settled?.hasNativeChapters ? '' : (settled?.description ?? ''),
-			comments,
-			durationSeconds: settled?.durationSeconds ?? 0,
+		// Swapping the controls out from under the pointer/keyboard: a removed node
+		// never gets mouseleave/blur, so hide the tooltip here and carry focus over.
+		const previous = controls;
+		const focusIndex = previous
+			? focusableIn(previous.element).findIndex((el) => el === document.activeElement)
+			: -1;
+		tooltip.hide();
+		controls = createControls({
+			highlights,
+			onSeek,
+			onToggle,
+			onLabelActivate: scrollToSourceComment,
+			tooltip,
 		});
-		highlightsReady = true;
-		render(settled?.durationSeconds ?? 0);
-	})();
+		if (previous?.element.isConnected) previous.element.replaceWith(controls.element);
+		previous?.destroy();
+		if (focusIndex >= 0) focusableIn(controls.element)[focusIndex]?.focus();
+
+		keepMounted();
+		applyEnabled();
+		controls.update(getCurrentTime());
+	};
+
+	const refresh = (): void => {
+		if (!page || signal.aborted) return;
+		const highlights = buildHighlights({
+			// YouTube already puts description timestamps on the bar as chapters.
+			description: page.hasNativeChapters ? '' : page.description,
+			comments,
+			durationSeconds: page.durationSeconds,
+		});
+		const key = `${page.durationSeconds}|${JSON.stringify(highlights)}`;
+		if (key === renderedKey) return;
+		renderedKey = key;
+		render(highlights, page.durationSeconds);
+	};
+
+	const usePageState = (state: PlayerState): void => {
+		// A later 0 means "unknown right now" (e.g. mid-roll ad), not a new length:
+		// keep the last known one rather than tearing the markers down.
+		page =
+			state.durationSeconds > 0 || !page
+				? state
+				: { ...state, durationSeconds: page.durationSeconds };
+		// Comments are page DOM as well: only read them once it is this video's.
+		if (!watchingComments) {
+			watchingComments = true;
+			watchComments(signal, (next) => {
+				comments = next;
+				// The description / chapter panels may have settled meanwhile; the
+				// bridge answers synchronously, so this lands before `refresh`.
+				sendToPage({ kind: 'query-player' });
+				refresh();
+			});
+			// The chapter panels can render just after the page reports ready, and
+			// nothing else may push afterwards (e.g. comments disabled): re-read.
+			for (const delayMs of FOLLOW_UP_QUERY_MS) {
+				const timer = setTimeout(() => {
+					sendToPage({ kind: 'query-player' });
+				}, delayMs);
+				signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+			}
+		}
+		refresh();
+	};
 
 	return {
 		videoId,
+		start: () => {
+			// The settings toggle is the extension's global on/off switch and its main
+			// discoverability surface, so it mounts on every /watch page — independent
+			// of whether this particular video has any highlights.
+			void waitForElement(SELECTORS.settingsMenu, { signal, timeoutMs: 20_000 })
+				.then((menu) => {
+					if (!signal.aborted) {
+						menuItem = mountSettingsMenuItem(menu, { checked: enabled, onToggle });
+					}
+				})
+				.catch(noop);
+
+			attachTimeUpdates((seconds) => {
+				keepMounted();
+				controls?.update(seconds);
+			}, signal);
+
+			// Ready states usually arrive as bridge pushes (→ onPlayerState); poll as
+			// a backstop, and after the timeout settle for whatever the player has.
+			void waitFor(
+				() => {
+					if (latestState?.videoId === videoId && latestState.pageReady)
+						return latestState;
+					sendToPage({ kind: 'query-player' });
+					return null;
+				},
+				{ signal, intervalMs: 500, timeoutMs: 15_000 },
+			)
+				.catch(() => {
+					if (signal.aborted || latestState?.videoId !== videoId) return null;
+					acceptUnready = true;
+					return latestState;
+				})
+				.then((state) => {
+					if (state) usePageState(state);
+				});
+		},
 		onPlayerState: (state) => {
-			if (highlightsReady && state.durationSeconds > 0) render(state.durationSeconds);
+			if (state.pageReady || acceptUnready) usePageState(state);
 		},
 		onEnabledChange: applyEnabled,
 		dispose: () => {
 			abort.abort();
-			detachTime();
 			markers?.destroy();
 			controls?.destroy();
 			menuItem?.destroy();
 			tooltip?.destroy();
+			markers = null;
+			controls = null;
+			menuItem = null;
+			tooltip = null;
 		},
 	};
 }
 
-async function mountInto(selector: string, node: Element, signal: AbortSignal): Promise<void> {
-	try {
-		const host = await waitForElement(selector, { signal, timeoutMs: 20_000 });
-		if (!signal.aborted && !host.contains(node)) host.appendChild(node);
-	} catch {
-		// Host never appeared — nothing to mount into.
-	}
+const focusableIn = (root: Element): readonly HTMLElement[] =>
+	queryAll<HTMLElement>('button, [tabindex]', root);
+
+function mountIfDetached(selector: string, node: Element | undefined): void {
+	if (node && !node.isConnected) query(selector)?.appendChild(node);
 }
 
 function attachTimeUpdates(onTick: (seconds: number) => void, signal: AbortSignal): () => void {
 	const video = getVideoElement();
+	// The throttle's trailing call can land after abort; it must not tick then.
 	const handler = throttle(() => {
-		onTick(getCurrentTime());
+		if (!signal.aborted) onTick(getCurrentTime());
 	}, 500);
 	video?.addEventListener('timeupdate', handler);
 	// Backstop for scrubbing while paused (no `timeupdate` fires then).

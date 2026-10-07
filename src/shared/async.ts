@@ -130,3 +130,28 @@ export function throttle<A extends readonly unknown[]>(
 		}
 	};
 }
+
+export interface Debounced {
+	(): void;
+	cancel: () => void;
+}
+
+/** Trailing debounce: runs `fn` once calls have paused for `delayMs`. */
+export function debounce(fn: () => void, delayMs: number): Debounced {
+	// eslint-disable-next-line functional/no-let -- scheduler state
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const cancel = (): void => {
+		clearTimeout(timer);
+		timer = undefined;
+	};
+	return Object.assign(
+		(): void => {
+			cancel();
+			timer = setTimeout(() => {
+				timer = undefined;
+				fn();
+			}, delayMs);
+		},
+		{ cancel },
+	);
+}
