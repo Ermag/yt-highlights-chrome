@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.1.3
+
+### Fixed
+
+- The "Highlights for YouTube" item in the player settings menu now sits at the
+  bottom of the menu, and no longer shows up inside submenus such as Quality or
+  Sleep timer.
+- Moving between videos no longer leaves highlights missing or shows the
+  previous video's highlights. The description and video length come from the
+  player's data for the current video, page details are only trusted once the
+  page has switched over, and highlights are rebuilt whenever their inputs
+  change (for example, after a pre-roll ad).
+- Comments that load late, or only once you scroll, now add their timestamps.
+- Description highlights appear straight away instead of waiting for comments
+  to load.
+- Markers and controls come back if YouTube rebuilds the player controls.
+
 ## 4.1.1
 
 ### Changed
