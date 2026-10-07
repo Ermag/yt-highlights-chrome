@@ -241,6 +241,26 @@ describe('content app (integration)', () => {
 		expect(markerCount()).toBe(1);
 	});
 
+	it("doesn't resurrect the old video's overlay from a late playback tick", async () => {
+		const bridge = stubBridge(playerState());
+		await startApp();
+		await vi.advanceTimersByTimeAsync(100);
+
+		// Two quick ticks: the throttle runs the first and schedules a trailing one.
+		const video = document.querySelector('#movie_player video')!;
+		video.dispatchEvent(new Event('timeupdate'));
+		video.dispatchEvent(new Event('timeupdate'));
+
+		history.pushState(null, '', '/watch?v=vid2');
+		bridge.state = playerState({ videoId: 'vid2', description: '1:00 Only one' });
+		document.dispatchEvent(new Event('yt-navigate-finish'));
+		await vi.advanceTimersByTimeAsync(1500);
+
+		expect(document.querySelectorAll('.ytph-controls')).toHaveLength(1);
+		expect(document.querySelectorAll('.ytph-markers')).toHaveLength(1);
+		expect(markerCount()).toBe(1);
+	});
+
 	it('switches videos even when no navigation event arrives', async () => {
 		const bridge = stubBridge(playerState());
 		await startApp();

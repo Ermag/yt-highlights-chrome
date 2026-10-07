@@ -118,8 +118,10 @@ function createSession(videoId: string): Session {
 	};
 
 	// YouTube can rebuild the player chrome (ads, layout switches); re-attach
-	// rather than vanish. Cheap enough to run on every time tick.
+	// rather than vanish. Cheap enough to run on every time tick. Never after
+	// dispose — that would resurrect this video's overlay on the next one.
 	const keepMounted = (): void => {
+		if (signal.aborted) return;
 		mountIfDetached(SELECTORS.progressBar, markers?.element);
 		mountIfDetached(SELECTORS.leftControls, controls?.element);
 	};
@@ -237,6 +239,10 @@ function createSession(videoId: string): Session {
 			controls?.destroy();
 			menuItem?.destroy();
 			tooltip?.destroy();
+			markers = null;
+			controls = null;
+			menuItem = null;
+			tooltip = null;
 		},
 	};
 }
@@ -247,8 +253,9 @@ function mountIfDetached(selector: string, node: Element | undefined): void {
 
 function attachTimeUpdates(onTick: (seconds: number) => void, signal: AbortSignal): () => void {
 	const video = getVideoElement();
+	// The throttle's trailing call can land after abort; it must not tick then.
 	const handler = throttle(() => {
-		onTick(getCurrentTime());
+		if (!signal.aborted) onTick(getCurrentTime());
 	}, 500);
 	video?.addEventListener('timeupdate', handler);
 	// Backstop for scrubbing while paused (no `timeupdate` fires then).
